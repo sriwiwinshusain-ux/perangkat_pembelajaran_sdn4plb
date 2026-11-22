@@ -4719,11 +4719,19 @@
       }
     });
   </script>
-<!-- KODE SINKRONISASI + LOGIN GOOGLE FIREBASE V6 (ANTI-POTONG) -->
-<div id="bar-auth-sdn4" style="position: fixed; bottom: 14px; right: 14px; z-index: 999999; background: #14532d; color: #fff; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); font-family: sans-serif; font-size: 13px; display: flex; align-items: center; gap: 10px; border: 2px solid #facc15;">
-  <span id="status-sync-sdn4">🔒 Belum Login Cloud</span>
-  <button type="button" id="btn-google-login" style="background: #facc15; color: #451a03; border: none; padding: 6px 14px; border-radius: 999px; font-weight: bold; cursor: pointer;">Login Google</button>
-  <button type="button" id="btn-google-logout" style="display: none; background: #ef4444; color: #fff; border: none; padding: 5px 10px; border-radius: 999px; font-size: 11px; cursor: pointer;">Keluar</button>
+<!-- KODE SINKRONISASI + LAYAR KUNCI PENUH FIREBASE V7 -->
+<div id="layar-kunci-sdn4" style="position: fixed; inset: 0; z-index: 999999; background: rgba(20, 83, 45, 0.98); font-family: sans-serif; display: flex; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: #ffffff; color: #0f172a; padding: 32px 28px; border-radius: 22px; max-width: 400px; width: 100%; text-align: center; border-top: 8px solid #f97316; border-bottom: 6px solid #facc15; box-shadow: 0 25px 60px rgba(0,0,0,0.5);">
+    <div style="width: 60px; height: 60px; border-radius: 16px; background: #14532d; color: #fde047; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; margin: 0 auto 14px auto; border: 2px solid #facc15;">SDN4</div>
+    <h2 style="color: #14532d; font-size: 20px; margin-bottom: 6px;">SDN 4 PULUBALA</h2>
+    <p id="status-sync-sdn4" style="font-size: 13px; color: #475569; margin-bottom: 20px; line-height: 1.5;">🔒 Akses terbatas. Silakan masuk menggunakan akun <b>belajar.id</b> atau Gmail guru SDN 4 Pulubala yang terdaftar.</p>
+    <button type="button" id="btn-google-login" style="background: #15803d; color: #ffffff; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(21,128,61,0.3);">Masuk dengan Akun Google</button>
+  </div>
+</div>
+
+<div id="bar-status-kecil" style="display: none; position: fixed; bottom: 14px; right: 14px; z-index: 999998; background: #14532d; color: #fff; padding: 8px 14px; border-radius: 999px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 12px; align-items: center; gap: 8px; border: 2px solid #facc15;">
+  <span id="teks-status-kecil">✅ Cloud Aktif</span>
+  <button type="button" id="btn-google-logout" style="background: #ef4444; color: #fff; border: none; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; cursor: pointer;">Keluar</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -4748,6 +4756,7 @@
     }
     const auth = firebase.auth();
     const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
 
     const dbBaseUrl = firebaseConfig.databaseURL + "/" + NODE_DATA + ".json";
     let currentToken = null;
@@ -4755,35 +4764,51 @@
     let isSyncing = false;
     let syncInterval = null;
 
+    const layarKunci = document.getElementById("layar-kunci-sdn4");
+    const barKecil = document.getElementById("bar-status-kecil");
     const statusEl = document.getElementById("status-sync-sdn4");
+    const teksKecilEl = document.getElementById("teks-status-kecil");
     const btnLogin = document.getElementById("btn-google-login");
     const btnLogout = document.getElementById("btn-google-logout");
 
     btnLogin.addEventListener("click", function() {
-      statusEl.innerText = "⏳ Membuka Google...";
+      statusEl.innerHTML = "⏳ Membuka jendela login Google...";
       auth.signInWithPopup(provider).catch(function(err) {
         if (err.code === "auth/popup-blocked") {
           auth.signInWithRedirect(provider);
         } else {
-          statusEl.innerText = "⚠️ " + err.code;
-          alert("Gagal login (" + err.code + "): " + err.message);
+          statusEl.innerHTML = "⚠️ Gagal login: " + err.message;
         }
       });
     });
 
     btnLogout.addEventListener("click", function() {
-      auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      auth.signOut().then(function() {
+        location.reload();
+      });
     });
 
-    async function tarikDariCloud() {
+    async function verifikasiDanTarikData() {
       if (!currentToken) return;
       try {
         const res = await fetch(dbBaseUrl + "?auth=" + currentToken + "&t=" + Date.now());
         if (res.status === 401 || res.status === 403) {
-          statusEl.innerText = "⛔ Email tidak terdaftar di SDN 4 Plb";
+          localStorage.clear();
+          layarKunci.style.display = "flex";
+          barKecil.style.display = "none";
+          statusEl.innerHTML = "<span style='color:#dc2626; font-weight:bold;'>⛔ AKSES DITOLAK!</span><br>Email Anda tidak terdaftar sebagai guru SDN 4 Pulubala. Silakan keluar dan pilih akun yang terdaftar.";
+          btnLogin.innerText = "Ganti Akun Google";
           return;
         }
+
         const cloudData = await res.json();
+        // Email sah! Buka layar kunci aplikasi
+        layarKunci.style.display = "none";
+        barKecil.style.display = "flex";
+        teksKecilEl.innerText = "✅ Cloud Aktif";
+
         if (cloudData && typeof cloudData === "object" && !cloudData.error) {
           let berubah = false;
           for (const key in cloudData) {
@@ -4793,7 +4818,6 @@
             }
           }
           lastJsonSent = JSON.stringify(cloudData);
-          statusEl.innerText = "✅ Cloud Aktif";
           if (berubah && !sessionStorage.getItem("sudah_reload_cloud")) {
             sessionStorage.setItem("sudah_reload_cloud", "1");
             location.reload();
@@ -4818,16 +4842,14 @@
 
       isSyncing = true;
       try {
-        const res = await fetch(dbBaseUrl + "?auth=" + currentToken, {
+        const res = await fetch(dbBaseUrl + "?auth=${currentToken}", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: currentJson
         });
         if (res.ok) {
           lastJsonSent = currentJson;
-          statusEl.innerText = "✅ Tersimpan ke Cloud";
-        } else {
-          statusEl.innerText = "⛔ Akses Ditolak";
+          teksKecilEl.innerText = "✅ Tersimpan ke Cloud";
         }
       } catch (e) {
         console.error("Gagal kirim cloud:", e);
@@ -4839,11 +4861,8 @@
     auth.onAuthStateChanged(async function(user) {
       if (user) {
         currentToken = await user.getIdToken();
-        statusEl.innerText = "⏳ Menghubungkan...";
-        btnLogin.style.display = "none";
-        btnLogout.style.display = "inline-block";
-
-        await tarikDariCloud();
+        statusEl.innerHTML = "⏳ Memeriksa izin akun <b>" + user.email + "</b>...";
+        await verifikasiDanTarikData();
         if (syncInterval) clearInterval(syncInterval);
         syncInterval = setInterval(async function() {
           if (auth.currentUser) currentToken = await auth.currentUser.getIdToken();
@@ -4852,9 +4871,8 @@
       } else {
         currentToken = null;
         if (syncInterval) clearInterval(syncInterval);
-        statusEl.innerText = "🔒 Belum Login Cloud";
-        btnLogin.style.display = "inline-block";
-        btnLogout.style.display = "none";
+        layarKunci.style.display = "flex";
+        barKecil.style.display = "none";
       }
     });
   })();
