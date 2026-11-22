@@ -4719,135 +4719,145 @@
       }
     });
   </script>
-<!-- KODE SINKRONISASI + LOGIN GOOGLE FIREBASE V4 (AMAN) -->
-<div id="bar-auth-sdn4" style="position: fixed; bottom: 14px; right: 14px; z-index: 99999; background: #14532d; color: #fff; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 13px; display: flex; align-items: center; gap: 10px; border: 2px solid #facc15;">
+<!-- KODE SINKRONISASI + LOGIN GOOGLE FIREBASE V6 (ANTI-POTONG) -->
+<div id="bar-auth-sdn4" style="position: fixed; bottom: 14px; right: 14px; z-index: 999999; background: #14532d; color: #fff; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); font-family: sans-serif; font-size: 13px; display: flex; align-items: center; gap: 10px; border: 2px solid #facc15;">
   <span id="status-sync-sdn4">🔒 Belum Login Cloud</span>
-  <button id="btn-google-login" style="background: #facc15; color: #451a03; border: none; padding: 6px 12px; border-radius: 999px; font-weight: bold; cursor: pointer;">Login Google</button>
-  <button id="btn-google-logout" style="display: none; background: #ef4444; color: #fff; border: none; padding: 5px 10px; border-radius: 999px; font-size: 11px; cursor: pointer;">Keluar</button>
+  <button type="button" id="btn-google-login" style="background: #facc15; color: #451a03; border: none; padding: 6px 14px; border-radius: 999px; font-weight: bold; cursor: pointer;">Login Google</button>
+  <button type="button" id="btn-google-logout" style="display: none; background: #ef4444; color: #fff; border: none; padding: 5px 10px; border-radius: 999px; font-size: 11px; cursor: pointer;">Keluar</button>
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://gstatic.com";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://gstatic.com";
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyB1a3-QSKurbiRYaOgAVoCLaFIIYTpnkYU",
-    authDomain: "://firebaseapp.com",
-    databaseURL: "https://daftar-nilai-kelas-5-sdn-4-plb-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "daftar-nilai-kelas-5-sdn-4-plb",
-    storageBucket: "daftar-nilai-kelas-5-sdn-4-plb.firebasestorage.app",
-    messagingSenderId: "955991273682",
-    appId: "1:955991273682:web:f17df6ec4c14c242807d0b"
-  };
+<script>
+  (function() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyB1a3-QSKurbiRYaOgAVoCLaFIIYTpnkYU",
+      authDomain: "daftar-nilai-kelas-5-sdn-4-plb.firebaseapp.com",
+      databaseURL: "https://daftar-nilai-kelas-5-sdn-4-plb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "daftar-nilai-kelas-5-sdn-4-plb",
+      storageBucket: "daftar-nilai-kelas-5-sdn-4-plb.firebasestorage.app",
+      messagingSenderId: "955991273682",
+      appId: "1:955991273682:web:f17df6ec4c14c242807d0b"
+    };
 
-  const NODE_DATA = "data_perangkat_sdn4plb";
+    const NODE_DATA = "data_perangkat_sdn4plb";
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
 
-  const dbBaseUrl = `${firebaseConfig.databaseURL}/${NODE_DATA}.json`;
-  let currentToken = null;
-  let lastJsonSent = "";
-  let isSyncing = false;
-  let syncInterval = null;
+    const dbBaseUrl = firebaseConfig.databaseURL + "/" + NODE_DATA + ".json";
+    let currentToken = null;
+    let lastJsonSent = "";
+    let isSyncing = false;
+    let syncInterval = null;
 
-  const statusEl = document.getElementById("status-sync-sdn4");
-  const btnLogin = document.getElementById("btn-google-login");
-  const btnLogout = document.getElementById("btn-google-logout");
+    const statusEl = document.getElementById("status-sync-sdn4");
+    const btnLogin = document.getElementById("btn-google-login");
+    const btnLogout = document.getElementById("btn-google-logout");
 
-  btnLogin.addEventListener("click", () => {
-    signInWithPopup(auth, provider).catch((err) => {
-      alert("Gagal login Google: " + err.message);
+    btnLogin.addEventListener("click", function() {
+      statusEl.innerText = "⏳ Membuka Google...";
+      auth.signInWithPopup(provider).catch(function(err) {
+        if (err.code === "auth/popup-blocked") {
+          auth.signInWithRedirect(provider);
+        } else {
+          statusEl.innerText = "⚠️ " + err.code;
+          alert("Gagal login (" + err.code + "): " + err.message);
+        }
+      });
     });
-  });
 
-  btnLogout.addEventListener("click", () => {
-    signOut(auth);
-  });
+    btnLogout.addEventListener("click", function() {
+      auth.signOut();
+    });
 
-  async function tarikDariCloud() {
-    if (!currentToken) return;
-    try {
-      const res = await fetch(`${dbBaseUrl}?auth=${currentToken}&t=${Date.now()}`);
-      if (res.status === 401 || res.status === 403) {
-        statusEl.innerText = "⛔ Email tidak terdaftar di SDN 4 Plb";
-        return;
-      }
-      const cloudData = await res.json();
-      if (cloudData && typeof cloudData === "object" && !cloudData.error) {
-        let berubah = false;
-        for (const key in cloudData) {
-          if (localStorage.getItem(key) !== cloudData[key]) {
-            localStorage.setItem(key, cloudData[key]);
-            berubah = true;
+    async function tarikDariCloud() {
+      if (!currentToken) return;
+      try {
+        const res = await fetch(dbBaseUrl + "?auth=" + currentToken + "&t=" + Date.now());
+        if (res.status === 401 || res.status === 403) {
+          statusEl.innerText = "⛔ Email tidak terdaftar di SDN 4 Plb";
+          return;
+        }
+        const cloudData = await res.json();
+        if (cloudData && typeof cloudData === "object" && !cloudData.error) {
+          let berubah = false;
+          for (const key in cloudData) {
+            if (localStorage.getItem(key) !== cloudData[key]) {
+              localStorage.setItem(key, cloudData[key]);
+              berubah = true;
+            }
+          }
+          lastJsonSent = JSON.stringify(cloudData);
+          statusEl.innerText = "✅ Cloud Aktif";
+          if (berubah && !sessionStorage.getItem("sudah_reload_cloud")) {
+            sessionStorage.setItem("sudah_reload_cloud", "1");
+            location.reload();
+          } else {
+            sessionStorage.removeItem("sudah_reload_cloud");
           }
         }
-        lastJsonSent = JSON.stringify(cloudData);
-        statusEl.innerText = "✅ Cloud Aktif";
-        if (berubah && !sessionStorage.getItem("sudah_reload_cloud")) {
-          sessionStorage.setItem("sudah_reload_cloud", "1");
-          location.reload();
+      } catch (e) {
+        console.error("Gagal tarik cloud:", e);
+      }
+    }
+
+    async function kirimKeCloud() {
+      if (isSyncing || !currentToken) return;
+      const semuaData = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        semuaData[k] = localStorage.getItem(k);
+      }
+      const currentJson = JSON.stringify(semuaData);
+      if (currentJson === "{}" || currentJson === lastJsonSent) return;
+
+      isSyncing = true;
+      try {
+        const res = await fetch(dbBaseUrl + "?auth=" + currentToken, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: currentJson
+        });
+        if (res.ok) {
+          lastJsonSent = currentJson;
+          statusEl.innerText = "✅ Tersimpan ke Cloud";
         } else {
-          sessionStorage.removeItem("sudah_reload_cloud");
+          statusEl.innerText = "⛔ Akses Ditolak";
         }
+      } catch (e) {
+        console.error("Gagal kirim cloud:", e);
+      } finally {
+        isSyncing = false;
       }
-    } catch (e) {
-      console.error("Gagal tarik cloud:", e);
     }
-  }
 
-  async function kirimKeCloud() {
-    if (isSyncing || !currentToken) return;
-    const semuaData = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      semuaData[k] = localStorage.getItem(k);
-    }
-    const currentJson = JSON.stringify(semuaData);
-    if (currentJson === "{}" || currentJson === lastJsonSent) return;
+    auth.onAuthStateChanged(async function(user) {
+      if (user) {
+        currentToken = await user.getIdToken();
+        statusEl.innerText = "⏳ Menghubungkan...";
+        btnLogin.style.display = "none";
+        btnLogout.style.display = "inline-block";
 
-    isSyncing = true;
-    try {
-      const res = await fetch(`${dbBaseUrl}?auth=${currentToken}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: currentJson
-      });
-      if (res.ok) {
-        lastJsonSent = currentJson;
-        statusEl.innerText = "✅ Tersimpan ke Cloud";
+        await tarikDariCloud();
+        if (syncInterval) clearInterval(syncInterval);
+        syncInterval = setInterval(async function() {
+          if (auth.currentUser) currentToken = await auth.currentUser.getIdToken();
+          kirimKeCloud();
+        }, 4000);
       } else {
-        statusEl.innerText = "⛔ Akses Ditolak";
+        currentToken = null;
+        if (syncInterval) clearInterval(syncInterval);
+        statusEl.innerText = "🔒 Belum Login Cloud";
+        btnLogin.style.display = "inline-block";
+        btnLogout.style.display = "none";
       }
-    } catch (e) {
-      console.error("Gagal kirim cloud:", e);
-    } finally {
-      isSyncing = false;
-    }
-  }
-
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentToken = await user.getIdToken();
-      statusEl.innerText = "⏳ Menghubungkan (" + user.email.split("@") + ")...";
-      btnLogin.style.display = "none";
-      btnLogout.style.display = "inline-block";
-
-      await tarikDariCloud();
-      if (syncInterval) clearInterval(syncInterval);
-      syncInterval = setInterval(async () => {
-        if (auth.currentUser) currentToken = await auth.currentUser.getIdToken();
-        kirimKeCloud();
-      }, 4000);
-    } else {
-      currentToken = null;
-      if (syncInterval) clearInterval(syncInterval);
-      statusEl.innerText = "🔒 Belum Login Cloud";
-      btnLogin.style.display = "inline-block";
-      btnLogout.style.display = "none";
-    }
-  });
+    });
+  })();
 </script>
 
 </body>
