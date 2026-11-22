@@ -4719,71 +4719,24 @@
       }
     });
   </script>
-  <!-- KODE SINKRONISASI OTOMATIS KE GOOGLE FIREBASE V3 -->
-<script>
-  const FIREBASE_DB_URL = "https://daftar-nilai-kelas-5-sdn-4-plb-default-rtdb.asia-southeast1.firebasedatabase.app";
+ // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-  (function() {
-    const dbEndpoint = FIREBASE_DB_URL.replace(/\/$/, "") + "/data_perangkat_sdn4plb.json";
-    let lastJsonSent = "";
-    let isSyncing = false;
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB1a3-QSKurbiRYaOgAVoCLAfIIYTpnkYU",
+  authDomain: "daftar-nilai-kelas-5-sdn-4-plb.firebaseapp.com",
+  databaseURL: "https://daftar-nilai-kelas-5-sdn-4-plb-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "daftar-nilai-kelas-5-sdn-4-plb",
+  storageBucket: "daftar-nilai-kelas-5-sdn-4-plb.firebasestorage.app",
+  messagingSenderId: "955991273682",
+  appId: "1:955991273682:web:f17df6ec4c14c242807d0b"
+};
 
-    async function tarikDariCloud() {
-      try {
-        const res = await fetch(dbEndpoint + "?t=" + Date.now());
-        const cloudData = await res.json();
-        if (cloudData && typeof cloudData === "object") {
-          let berubah = false;
-          for (const key in cloudData) {
-            if (localStorage.getItem(key) !== cloudData[key]) {
-              localStorage.setItem(key, cloudData[key]);
-              berubah = true;
-            }
-          }
-          lastJsonSent = JSON.stringify(cloudData);
-          if (berubah && !sessionStorage.getItem("sudah_reload_cloud")) {
-            sessionStorage.setItem("sudah_reload_cloud", "1");
-            location.reload();
-          } else {
-            sessionStorage.removeItem("sudah_reload_cloud");
-          }
-        }
-      } catch (e) {
-        console.error("Gagal tarik cloud:", e);
-      }
-    }
-
-    async function kirimKeCloud() {
-      if (isSyncing) return;
-      const semuaData = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        semuaData[k] = localStorage.getItem(k);
-      }
-      const currentJson = JSON.stringify(semuaData);
-      if (currentJson === "{}" || currentJson === lastJsonSent) return;
-
-      isSyncing = true;
-      try {
-        await fetch(dbEndpoint, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: currentJson
-        });
-        lastJsonSent = currentJson;
-      } catch (e) {
-        console.error("Gagal kirim cloud:", e);
-      } finally {
-        isSyncing = false;
-      }
-    }
-
-    window.addEventListener("load", async () => {
-      await tarikDariCloud();
-      setInterval(kirimKeCloud, 3000);
-    });
-  })();
-</script>
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 </body>
 </html>
