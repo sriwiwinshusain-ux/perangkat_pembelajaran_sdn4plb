@@ -5077,10 +5077,286 @@
     showToast(ditambah > 0 ? ('Sukses! ' + ditambah + ' TP ditambahkan ke KKTP.') : 'Seluruh TP sudah lengkap di KKTP.');
   };
 
-  window.viewKKTP = function() {
+   window.viewKKTP = function() {
     var ctx = appState.context;
     var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
     var fase = kelasToFase(kelas);
+    var list = (appState.kktpList || []).filter(function(k) {
+      return k.kelas === kelas && k.semester === semester && k.mapel === mapel;
+    });
+    var tpsCount = getSemuaTpAktif().length;
+
+    var rowsHtml = list.length ? list.map(function(item, idx) {
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><span class="badge badge-brown">' + escapeHtml(getBabLabel(item)) + '</span></td>' +
+        '<td><span class="badge badge-green">' + escapeHtml(item.kodeTp || ('TP.' + (idx + 1))) + '</span></td>' +
+        '<td><strong>' + escapeHtml(item.tujuanPembelajaran) + '</strong></td>' +
+        '<td>' + escapeHtml(item.indikator || item.kriteria || '-') + '</td>' +
+        '<td><span class="badge badge-yellow">' + escapeHtml(item.interval || '75 - 100 (Tuntas)') + '</span></td>' +
+        '<td class="no-print">' +
+          '<button type="button" class="btn btn-pink btn-sm" onclick="appState.kktpList=appState.kktpList.filter(x=>x.id!==\'' + item.id + '\');saveState();renderCurrentMenu();">Hapus</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;">Belum ada KKTP. Klik <strong>"Sinkronkan Semua TP (' + tpsCount + ' TP)"</strong> di atas.</td></tr>';
+
+    return '<div class="card">' +
+      '<div class="card-header no-print">' +
+        '<div class="card-title">Kriteria Ketercapaian Tujuan Pembelajaran (KKTP) • Kelas ' + kelas + ' • Semester ' + semester + '</div>' +
+        '<button type="button" class="btn btn-green" onclick="syncAllTpToKktp()">Sinkronkan Semua TP (' + tpsCount + ' TP)</button>' +
+      '</div>' +
+      renderKopSurat('KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
+      '<div class="table-wrap"><table><thead><tr>' +
+        '<th style="width:40px;">No</th>' +
+        '<th style="width:110px;">BAB</th>' +
+        '<th style="width:95px;">Kode TP</th>' +
+        '<th>Tujuan Pembelajaran (TP)</th>' +
+        '<th>Indikator Ketercapaian</th>' +
+        '<th style="width:200px;">Interval Nilai / Kriteria</th>' +
+        '<th class="no-print" style="width:80px;">Aksi</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+      renderTandaTangan() +
+    '</div>';
+  };
+
+  // 4. MENU 7: PROTA (PILIH TP LANGSUNG TERISI SEMUA + TARIK OTOMATIS AMAN)
+  window.syncAllTpToProta = function() {
+    var ctx = appState.context;
+    var tps = getSemuaTpAktif();
+    if (!tps.length) { showToast('Belum ada data TP di Analisis CP!', true); return; }
+    appState.protaList = appState.protaList || [];
+    var ditambah = 0;
+    tps.forEach(function(t, i) {
+      var sudahAda = appState.protaList.some(function(p) {
+        return p.kelas === ctx.kelas && p.semester === ctx.semester && p.mapel === ctx.mapel && p.tujuanPembelajaran === t.tp;
+      });
+      if (!sudahAda) {
+        appState.protaList.push({
+          id: 'prota_' + Date.now() + '_' + i,
+          kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+          bab: t.bab, kodeTp: t.kodeTp,
+          materiPokok: t.materi, tujuanPembelajaran: t.tp,
+          jp: t.jp, keterangan: 'Terlaksana Semester ' + ctx.semester
+        });
+        ditambah++;
+      }
+    });
+    saveState(); renderCurrentMenu();
+    showToast(ditambah > 0 ? ('Berhasil menambahkan ' + ditambah + ' TP ke Prota!') : 'Semua TP sudah ada di Prota.');
+  };
+
+  window.viewProta = function() {
+    var ctx = appState.context;
+    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
+    var fase = kelasToFase(kelas);
+    var list = (appState.protaList || []).filter(function(p) {
+      return p.kelas === kelas && p.semester === semester && p.mapel === mapel;
+    });
+    var totalJp = list.reduce(function(acc, it) { return acc + (parseInt(it.jp, 10) || 0); }, 0);
+
+    var rowsHtml = list.length ? list.map(function(item, idx) {
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td>Semester ' + escapeHtml(item.semester) + '</td>' +
+        '<td><span class="badge badge-brown">' + escapeHtml(getBabLabel(item)) + '</span></td>' +
+        '<td><strong>' + escapeHtml(item.materiPokok) + '</strong><br><small style="color:#475569;">' + escapeHtml(item.tujuanPembelajaran || '') + '</small></td>' +
+        '<td><span class="badge badge-yellow">' + (item.jp || 4) + ' JP</span></td>' +
+        '<td>' + escapeHtml(item.keterangan || '-') + '</td>' +
+        '<td class="no-print">' +
+          '<button type="button" class="btn btn-yellow btn-sm" onclick="openProtaModal(\'' + item.id + '\')">Edit</button> ' +
+          '<button type="button" class="btn btn-pink btn-sm" onclick="appState.protaList=appState.protaList.filter(x=>x.id!==\'' + item.id + '\');saveState();renderCurrentMenu();">Hapus</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;">Belum ada Program Tahunan. Klik <strong>"Tarik Semua TP Otomatis"</strong> atau <strong>"+ Tambah Prota"</strong>.</td></tr>';
+
+    return '<div class="card">' +
+      '<div class="card-header no-print">' +
+        '<div class="card-title">Program Tahunan (Prota) • Kelas ' + kelas + ' • Semester ' + semester + ' (Total: ' + totalJp + ' JP)</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button type="button" class="btn btn-yellow" onclick="syncAllTpToProta()">Tarik Semua TP Otomatis</button>' +
+          '<button type="button" class="btn btn-green" onclick="openProtaModal()">+ Tambah Prota (Pilih TP)</button>' +
+        '</div>' +
+      '</div>' +
+      renderKopSurat('PROGRAM TAHUNAN (PROTA)', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
+      '<div class="table-wrap"><table><thead><tr>' +
+        '<th style="width:40px;">No</th>' +
+        '<th style="width:95px;">Semester</th>' +
+        '<th style="width:110px;">BAB</th>' +
+        '<th>Materi Pokok & Tujuan Pembelajaran (TP)</th>' +
+        '<th style="width:85px;">Alokasi</th>' +
+        '<th style="width:140px;">Keterangan</th>' +
+        '<th class="no-print" style="width:120px;">Aksi</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+      renderTandaTangan() +
+    '</div>';
+  };
+  window.openProtaModal = function(id) {
+    id = id || null;
+    var existing = id ? appState.protaList.find(function(x) { return x.id === id; }) : null;
+    var tps = getSemuaTpAktif();
+    var pertama = tps.length ? tps.at(0) : null;
+    var def = existing || (pertama ? {
+      bab: pertama.bab, materiPokok: pertama.materi, tujuanPembelajaran: pertama.tp, jp: pertama.jp, keterangan: 'Semester ' + appState.context.semester
+    } : { bab: 'BAB 1', materiPokok: '', tujuanPembelajaran: '', jp: 4, keterangan: 'Semester ' + appState.context.semester });
+
+    var optHtml = tps.length
+      ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Otomatis) --</option>' + tps.map(function(t, idx) {
+          return '<option value="' + idx + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.tp.substring(0, 75)) + '...</option>';
+        }).join('')
+      : '<option value="">(Belum ada TP di Analisis CP)</option>';
+
+    openModal(existing ? 'Edit Prota' : 'Tambah Prota (Pilih TP Otomatis)',
+      '<form onsubmit="saveProta(event, \'' + (id || '') + '\')">' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
+          '<label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua Kolom)</label>' +
+          '<select class="form-control" onchange="autoFillProtaFromTp(this.value)">' + optHtml + '</select>' +
+        '</div>' +
+        '<div class="grid-2">' +
+          '<div class="form-group"><label class="form-label">BAB</label><input type="text" id="f-pt-bab" class="form-control" value="' + escapeHtml(getBabLabel(def)) + '" required /></div>' +
+          '<div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-pt-jp" class="form-control" value="' + (def.jp || 4) + '" required /></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Materi Pokok</label><input type="text" id="f-pt-materi" class="form-control" value="' + escapeHtml(def.materiPokok) + '" required /></div>' +
+        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-pt-tp" rows="3" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran || '') + '</textarea></div>' +
+        '<div class="form-group"><label class="form-label">Keterangan</label><input type="text" id="f-pt-ket" class="form-control" value="' + escapeHtml(def.keterangan || '') + '" /></div>' +
+        '<button type="submit" class="btn btn-green btn-block">Simpan Prota</button>' +
+      '</form>'
+    );
+  };
+
+  window.autoFillProtaFromTp = function(idxStr) {
+    if (idxStr === '') return;
+    var t = getSemuaTpAktif().at(parseInt(idxStr, 10));
+    if (!t) return;
+    document.getElementById('f-pt-bab').value = t.bab;
+    document.getElementById('f-pt-jp').value = t.jp;
+    document.getElementById('f-pt-materi').value = t.materi;
+    document.getElementById('f-pt-tp').value = t.tp;
+  };
+
+  window.saveProta = function(e, id) {
+    e.preventDefault();
+    var ctx = appState.context;
+    var payload = {
+      id: id || ('prota_' + Date.now()),
+      kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+      bab: document.getElementById('f-pt-bab').value.trim(),
+      jp: parseInt(document.getElementById('f-pt-jp').value, 10) || 4,
+      materiPokok: document.getElementById('f-pt-materi').value.trim(),
+      tujuanPembelajaran: document.getElementById('f-pt-tp').value.trim(),
+      keterangan: document.getElementById('f-pt-ket').value.trim()
+    };
+    if (id) {
+      var idx = appState.protaList.findIndex(function(x) { return x.id === id; });
+      if (idx > -1) appState.protaList.splice(idx, 1, payload);
+    } else {
+      appState.protaList.push(payload);
+    }
+    saveState(); closeModal(); renderCurrentMenu();
+    showToast('Program Tahunan disimpan!');
+  };
+
+  // 5. MENU 8: PROSEM (PILIH TP LANGSUNG TERISI SEMUA + TARIK OTOMATIS AMAN)
+  window.syncAllTpToProsem = function() {
+    var ctx = appState.context;
+    var tps = getSemuaTpAktif();
+    if (!tps.length) { showToast('Belum ada data TP di Analisis CP!', true); return; }
+    appState.prosemList = appState.prosemList || [];
+    var bulanDefault = ctx.semester === '1' ? 'Juli - Agustus' : 'Januari - Februari';
+    var ditambah = 0;
+    tps.forEach(function(t, i) {
+      var sudahAda = appState.prosemList.some(function(p) {
+        return p.kelas === ctx.kelas && p.semester === ctx.semester && p.mapel === ctx.mapel && p.tujuanPembelajaran === t.tp;
+      });
+      if (!sudahAda) {
+        appState.prosemList.push({
+          id: 'prosem_' + Date.now() + '_' + i,
+          kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+          bab: t.bab, kodeTp: t.kodeTp,
+          materiPokok: t.materi, tujuanPembelajaran: t.tp,
+          jp: t.jp, bulan: bulanDefault,
+          m1: true, m2: true, m3: false, m4: false, m5: false
+        });
+        ditambah++;
+      }
+    });
+    saveState(); renderCurrentMenu();
+    showToast(ditambah > 0 ? ('Berhasil menambahkan ' + ditambah + ' TP ke Prosem!') : 'Semua TP sudah ada di Prosem.');
+  };
+
+  window.openProsemModal = function(id) {
+    id = id || null;
+    var existing = id ? appState.prosemList.find(function(x) { return x.id === id; }) : null;
+    var tps = getSemuaTpAktif();
+    var pertama = tps.length ? tps.at(0) : null;
+    var bulanDef = appState.context.semester === '1' ? 'Juli - Agustus' : 'Januari - Februari';
+    var def = existing || (pertama ? {
+      bab: pertama.bab, materiPokok: pertama.materi, tujuanPembelajaran: pertama.tp, jp: pertama.jp, bulan: bulanDef
+    } : { bab: 'BAB 1', materiPokok: '', tujuanPembelajaran: '', jp: 4, bulan: bulanDef });
+
+    var optHtml = tps.length
+      ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Otomatis) --</option>' + tps.map(function(t, idx) {
+          return '<option value="' + idx + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.tp.substring(0, 75)) + '...</option>';
+        }).join('')
+      : '<option value="">(Belum ada TP di Analisis CP)</option>';
+
+    openModal(existing ? 'Edit Program Semester' : 'Tambah Program Semester (Pilih TP Otomatis)',
+      '<form onsubmit="saveProsem(event, \'' + (id || '') + '\')">' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
+          '<label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua Kolom)</label>' +
+          '<select class="form-control" onchange="autoFillProsemFromTp(this.value)">' + optHtml + '</select>' +
+        '</div>' +
+        '<div class="grid-2">' +
+          '<div class="form-group"><label class="form-label">BAB</label><input type="text" id="f-ps-bab" class="form-control" value="' + escapeHtml(getBabLabel(def)) + '" required /></div>' +
+          '<div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-ps-jp" class="form-control" value="' + (def.jp || 4) + '" required /></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Materi Pokok / Lingkup Materi</label><input type="text" id="f-ps-materi" class="form-control" value="' + escapeHtml(def.materiPokok) + '" required /></div>' +
+        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-ps-tp" rows="2" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran || '') + '</textarea></div>' +
+        '<div class="form-group"><label class="form-label">Bulan Pelaksanaan</label><input type="text" id="f-ps-bulan" class="form-control" value="' + escapeHtml(def.bulan || bulanDef) + '" required /></div>' +
+        '<button type="submit" class="btn btn-green btn-block">Simpan Program Semester</button>' +
+      '</form>'
+    );
+  };
+
+  window.autoFillProsemFromTp = function(idxStr) {
+    if (idxStr === '') return;
+    var t = getSemuaTpAktif().at(parseInt(idxStr, 10));
+    if (!t) return;
+    document.getElementById('f-ps-bab').value = t.bab;
+    document.getElementById('f-ps-jp').value = t.jp;
+    document.getElementById('f-ps-materi').value = t.materi;
+    document.getElementById('f-ps-tp').value = t.tp;
+  };
+
+  window.saveProsem = function(e, id) {
+    e.preventDefault();
+    var existing = id ? appState.prosemList.find(function(x) { return x.id === id; }) : null;
+    var payload = {
+      id: id || ('prosem_' + Date.now()),
+      kelas: appState.context.kelas,
+      semester: appState.context.semester,
+      mapel: appState.context.mapel,
+      bab: document.getElementById('f-ps-bab').value.trim(),
+      materiPokok: document.getElementById('f-ps-materi').value.trim(),
+      tujuanPembelajaran: document.getElementById('f-ps-tp').value.trim(),
+      jp: parseInt(document.getElementById('f-ps-jp').value, 10) || 4,
+      bulan: document.getElementById('f-ps-bulan').value.trim(),
+      m1: existing ? existing.m1 : true,
+      m2: existing ? existing.m2 : true,
+      m3: existing ? existing.m3 : false,
+      m4: existing ? existing.m4 : false,
+      m5: existing ? existing.m5 : false
+    };
+    if (id) {
+      var idx = appState.prosemList.findIndex(function(x) { return x.id === id; });
+      if (idx > -1) appState.prosemList.splice(idx, 1, payload);
+    } else {
+      appState.prosemList.push(payload);
+    }
+    saveState(); closeModal(); renderCurrentMenu();
+    showToast('Program Semester disimpan!');
+  };
+})();
+</script>
 
 <!-- KODE SINKRONISASI + LAYAR KUNCI PENUH FIREBASE V7 -->
 <div id="layar-kunci-sdn4" style="position: fixed; inset: 0; z-index: 999999; background: rgba(20, 83, 45, 0.98); font-family: sans-serif; display: flex; align-items: center; justify-content: center; padding: 20px;">
