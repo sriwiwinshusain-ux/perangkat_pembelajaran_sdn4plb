@@ -4719,6 +4719,193 @@
       }
     });
   </script>
+  <!-- PEMBARUAN OTOMATIS: FITUR BAB, SINKRON ALL TP KE KKTP, & AUTO-FILL ATP/PROTA/PROSEM -->
+<script>
+(function() {
+  function getBabLabel(item) {
+    return (item && item.bab && String(item.bab).trim()) ? String(item.bab).trim() : 'BAB 1';
+  }
+
+  function getSemuaTpAktif() {
+    var ctx = appState.context;
+    var dariAnalisis = (appState.analisisList || []).filter(function(a) {
+      return a.kelas === ctx.kelas && a.semester === ctx.semester && a.mapel === ctx.mapel;
+    });
+    if (dariAnalisis.length > 0) {
+      return dariAnalisis.map(function(a, i) {
+        return {
+          sumberId: a.id,
+          bab: getBabLabel(a),
+          kodeTp: a.kodeTp || ('TP.' + ctx.kelas + '.' + ctx.semester + '.' + (i + 1)),
+          elemen: a.elemen || '',
+          materi: a.kontenMateri || a.lingkupMateri || '',
+          tp: a.tujuanPembelajaran || '',
+          jp: parseInt(a.jp, 10) || 4
+        };
+      });
+    }
+    return (appState.atpList || []).filter(function(a) {
+      return a.kelas === ctx.kelas && a.semester === ctx.semester && a.mapel === ctx.mapel;
+    }).map(function(a, i) {
+      return {
+        sumberId: a.id,
+        bab: getBabLabel(a),
+        kodeTp: a.kodeTp || ('TP.' + ctx.kelas + '.' + ctx.semester + '.' + (i + 1)),
+        elemen: a.elemen || '',
+        materi: a.lingkupMateri || '',
+        tp: a.tujuanPembelajaran || '',
+        jp: parseInt(String(a.alokasiWaktu || '4').replace(/\D/g, ''), 10) || 4
+      };
+    });
+  }
+
+  // 1. MENU 4: ANALISIS CP + FITUR BAB
+  window.viewAnalisisCP = function() {
+    var ctx = appState.context;
+    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
+    var fase = kelasToFase(kelas);
+    var list = (appState.analisisList || []).filter(function(a) {
+      return a.kelas === kelas && a.semester === semester && a.mapel === mapel;
+    });
+
+    var rowsHtml = list.length ? list.map(function(item, idx) {
+      var kode = item.kodeTp || ('TP.' + kelas + '.' + semester + '.' + (idx + 1));
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><span class="badge badge-brown">' + escapeHtml(getBabLabel(item)) + '</span></td>' +
+        '<td><strong>' + escapeHtml(item.elemen) + '</strong></td>' +
+        '<td>' + escapeHtml(item.cpElemen) + '</td>' +
+        '<td>' + escapeHtml(item.kontenMateri) + '</td>' +
+        '<td><span class="badge badge-green">' + escapeHtml(kode) + '</span> <strong>' + escapeHtml(item.tujuanPembelajaran) + '</strong></td>' +
+        '<td class="no-print">' +
+          '<button type="button" class="btn btn-yellow btn-sm" onclick="openAnalisisCPModal(\'' + item.id + '\')">Edit</button> ' +
+          '<button type="button" class="btn btn-pink btn-sm" onclick="deleteAnalisisCP(\'' + item.id + '\')">Hapus</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;">Belum ada analisis CP pada semester ini. Klik "+ Tambah Analisis CP".</td></tr>';
+
+    return '<div class="card">' +
+      '<div class="card-header no-print">' +
+        '<div class="card-title">Analisis Capaian Pembelajaran & BAB • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + '</div>' +
+        '<button type="button" class="btn btn-green" onclick="openAnalisisCPModal()">+ Tambah Analisis CP & BAB</button>' +
+      '</div>' +
+      renderKopSurat('ANALISIS CAPAIAN PEMBELAJARAN (CP) & PEMETAAN BAB', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
+      '<div class="table-wrap"><table><thead><tr>' +
+        '<th style="width:40px;">No</th>' +
+        '<th style="width:120px;">BAB</th>' +
+        '<th style="width:140px;">Elemen</th>' +
+        '<th>CP Elemen</th>' +
+        '<th style="width:160px;">Konten Materi</th>' +
+        '<th>Tujuan Pembelajaran (TP)</th>' +
+        '<th class="no-print" style="width:120px;">Aksi</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+      renderTandaTangan() +
+    '</div>';
+  };
+
+  window.openAnalisisCPModal = function(id) {
+    id = id || null;
+    var ctx = appState.context;
+    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
+    var fase = kelasToFase(kelas);
+    var activeVer = appState.activeCpVersion || 'BSKAP No. 046/H/KR/2025';
+    var allFaseMapel = appState.cpList.filter(function(c) { return c.fase === fase && c.mapel === mapel; });
+    var byVer = allFaseMapel.filter(function(c) { return (c.ket || 'BSKAP No. 046/H/KR/2025') === activeVer; });
+    var cpOptions = byVer.length ? byVer : allFaseMapel;
+    var existing = id ? appState.analisisList.find(function(x) { return x.id === id; }) : null;
+    var firstCp = existing
+      ? (cpOptions.find(function(c) { return c.elemen === existing.elemen; }) || cpOptions.item(0) || cpOptions[0] || { elemen: existing.elemen, cp: existing.cpElemen })
+      : (cpOptions[0] || { elemen: '', cp: '' });
+    var urutBaru = appState.analisisList.filter(function(a) { return a.kelas === kelas && a.semester === semester && a.mapel === mapel; }).length + 1;
+
+    openModal(existing ? 'Edit Analisis CP & BAB' : 'Tambah Analisis CP & BAB',
+      '<form onsubmit="saveAnalisisCP(event, \'' + (id || '') + '\')">' +
+        '<div class="grid-2">' +
+          '<div class="form-group">' +
+            '<label class="form-label">BAB / Unit Pembelajaran</label>' +
+            '<input type="text" id="f-an-bab" class="form-control" placeholder="Contoh: BAB 1 - Bilangan Cacah" value="' + escapeHtml(existing ? getBabLabel(existing) : 'BAB 1') + '" required />' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label class="form-label">Kode TP & Alokasi (JP)</label>' +
+            '<div style="display:flex;gap:6px;">' +
+              '<input type="text" id="f-an-kodetp" class="form-control" value="' + escapeHtml(existing && existing.kodeTp ? existing.kodeTp : ('TP.' + kelas + '.' + semester + '.' + urutBaru)) + '" required />' +
+              '<input type="number" min="1" id="f-an-jp" class="form-control" style="width:80px;" title="Alokasi JP" value="' + (existing && existing.jp ? existing.jp : 4) + '" required />' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label class="form-label">Pilih Capaian Pembelajaran (Otomatis dari Menu CP)</label>' +
+          '<select id="f-an-cp-select" class="form-control" onchange="onSelectCPForAnalisis(this.value)">' +
+            cpOptions.map(function(c) {
+              return '<option value="' + c.id + '" ' + (firstCp.elemen === c.elemen ? 'selected' : '') + '>' + escapeHtml(c.elemen) + '</option>';
+            }).join('') +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label class="form-label">Elemen (Otomatis)</label>' +
+          '<input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(existing ? existing.elemen : firstCp.elemen) + '" readonly />' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label class="form-label">CP Elemen (Otomatis)</label>' +
+          '<textarea id="f-an-cp" rows="2" class="form-control" readonly>' + escapeHtml(existing ? existing.cpElemen : firstCp.cp) + '</textarea>' +
+        '</div>' +
+        '<div class="grid-2">' +
+          '<div class="form-group">' +
+            '<label class="form-label">Kompetensi</label>' +
+            '<input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(existing ? existing.kompetensi : ('Memahami dan mempraktikkan ' + firstCp.elemen)) + '" />' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label class="form-label">Konten / Lingkup Materi</label>' +
+            '<input type="text" id="f-an-materi" class="form-control" placeholder="Contoh: Teks Deskripsi" value="' + escapeHtml(existing ? existing.kontenMateri : '') + '" required />' +
+          '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label class="form-label">Tujuan Pembelajaran (TP)</label>' +
+          '<textarea id="f-an-tp" rows="3" class="form-control" placeholder="Ketik rumusan Tujuan Pembelajaran..." required>' + escapeHtml(existing ? existing.tujuanPembelajaran : '') + '</textarea>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-green btn-block">Simpan Analisis CP & BAB</button>' +
+      '</form>'
+    );
+  };
+
+  window.saveAnalisisCP = function(e, id) {
+    e.preventDefault();
+    var ctx = appState.context;
+    var payload = {
+      id: id || ('an_' + Date.now()),
+      kelas: ctx.kelas,
+      semester: ctx.semester,
+      mapel: ctx.mapel,
+      bab: document.getElementById('f-an-bab').value.trim(),
+      kodeTp: document.getElementById('f-an-kodetp').value.trim(),
+      jp: parseInt(document.getElementById('f-an-jp').value, 10) || 4,
+      elemen: document.getElementById('f-an-elemen').value.trim(),
+      cpElemen: document.getElementById('f-an-cp').value.trim(),
+      kompetensi: document.getElementById('f-an-komp').value.trim(),
+      kontenMateri: document.getElementById('f-an-materi').value.trim(),
+      tujuanPembelajaran: document.getElementById('f-an-tp').value.trim()
+    };
+    if (id) {
+      var idx = appState.analisisList.findIndex(function(x) { return x.id === id; });
+      if (idx > -1) appState.analisisList[idx] = payload;
+    } else {
+      appState.analisisList.push(payload);
+    }
+    saveState();
+    closeModal();
+    renderCurrentMenu();
+    showToast('Analisis CP & BAB berhasil disimpan!');
+  };
+
+  // 2. MENU 5: ATP (PILIH TP LANGSUNG TERISI SEMUA + TARIK OTOMATIS)
+  window.viewATP = function() {
+    var ctx = appState.context;
+    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
+    var fase = kelasToFase(kelas);
+    var list = (appState.atpList || []).filter(function(a) {
+      return a.kelas === kelas && a.semester === semester && a.mapel === mapel;
+    });
+
 <!-- KODE SINKRONISASI + LAYAR KUNCI PENUH FIREBASE V7 -->
 <div id="layar-kunci-sdn4" style="position: fixed; inset: 0; z-index: 999999; background: rgba(20, 83, 45, 0.98); font-family: sans-serif; display: flex; align-items: center; justify-content: center; padding: 20px;">
   <div style="background: #ffffff; color: #0f172a; padding: 32px 28px; border-radius: 22px; max-width: 400px; width: 100%; text-align: center; border-top: 8px solid #f97316; border-bottom: 6px solid #facc15; box-shadow: 0 25px 60px rgba(0,0,0,0.5);">
