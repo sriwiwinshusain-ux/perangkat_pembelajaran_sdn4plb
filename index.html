@@ -4897,7 +4897,7 @@
     showToast('Analisis CP & BAB berhasil disimpan!');
   };
 
-  // 2. MENU 5: ATP (PILIH TP LANGSUNG TERISI SEMUA + TARIK OTOMATIS)
+   // 2. MENU 5: ATP (PILIH TP LANGSUNG TERISI SEMUA + TARIK OTOMATIS AMAN)
   window.viewATP = function() {
     var ctx = appState.context;
     var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
@@ -4905,6 +4905,182 @@
     var list = (appState.atpList || []).filter(function(a) {
       return a.kelas === kelas && a.semester === semester && a.mapel === mapel;
     });
+
+    var rowsHtml = list.length ? list.map(function(item, idx) {
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><span class="badge badge-brown">' + escapeHtml(getBabLabel(item)) + '</span></td>' +
+        '<td><span class="badge badge-green">' + escapeHtml(item.kodeTp) + '</span></td>' +
+        '<td><strong>' + escapeHtml(item.elemen) + '</strong></td>' +
+        '<td>' + escapeHtml(item.lingkupMateri) + '</td>' +
+        '<td>' + escapeHtml(item.tujuanPembelajaran) + '</td>' +
+        '<td><span class="badge badge-yellow">' + escapeHtml(item.alokasiWaktu) + '</span></td>' +
+        '<td class="no-print">' +
+          '<button type="button" class="btn btn-yellow btn-sm" onclick="openATPModal(\'' + item.id + '\')">Edit</button> ' +
+          '<button type="button" class="btn btn-pink btn-sm" onclick="deleteATP(\'' + item.id + '\')">Hapus</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="8" style="text-align:center;">Belum ada ATP. Klik <strong>"Tarik Semua TP Otomatis"</strong> atau <strong>"+ Tambah ATP"</strong>.</td></tr>';
+
+    return '<div class="card">' +
+      '<div class="card-header no-print">' +
+        '<div class="card-title">Alur Tujuan Pembelajaran (ATP) • Kelas ' + kelas + ' • Semester ' + semester + '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button type="button" class="btn btn-yellow" onclick="syncAllTpToAtp()">Tarik Semua TP Otomatis</button>' +
+          '<button type="button" class="btn btn-green" onclick="openATPModal()">+ Tambah ATP (Pilih TP)</button>' +
+        '</div>' +
+      '</div>' +
+      renderKopSurat('ALUR TUJUAN PEMBELAJARAN (ATP)', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
+      '<div class="table-wrap"><table><thead><tr>' +
+        '<th style="width:40px;">No</th>' +
+        '<th style="width:110px;">BAB</th>' +
+        '<th style="width:95px;">Kode TP</th>' +
+        '<th style="width:130px;">Elemen</th>' +
+        '<th style="width:150px;">Lingkup Materi</th>' +
+        '<th>Tujuan Pembelajaran (TP)</th>' +
+        '<th style="width:80px;">Waktu</th>' +
+        '<th class="no-print" style="width:120px;">Aksi</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+      renderTandaTangan() +
+    '</div>';
+  };
+
+  window.syncAllTpToAtp = function() {
+    var ctx = appState.context;
+    var tps = getSemuaTpAktif();
+    if (!tps.length) { showToast('Belum ada data TP di menu Analisis CP!', true); return; }
+    var ditambah = 0;
+    tps.forEach(function(t, i) {
+      var sudahAda = appState.atpList.some(function(a) {
+        return a.kelas === ctx.kelas && a.semester === ctx.semester && a.mapel === ctx.mapel && a.tujuanPembelajaran === t.tp;
+      });
+      if (!sudahAda) {
+        appState.atpList.push({
+          id: 'atp_' + Date.now() + '_' + i,
+          kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+          bab: t.bab, kodeTp: t.kodeTp, elemen: t.elemen,
+          lingkupMateri: t.materi, tujuanPembelajaran: t.tp,
+          alokasiWaktu: t.jp + ' JP',
+          profilLulusan: 'Keimanan & Ketakwaan, Penalaran Kritis, Kolaborasi, Kemandirian'
+        });
+        ditambah++;
+      }
+    });
+    saveState(); renderCurrentMenu();
+    showToast(ditambah > 0 ? ('Berhasil menambahkan ' + ditambah + ' TP baru ke ATP!') : 'Semua TP sudah ada di ATP.');
+  };
+
+  window.openATPModal = function(id) {
+    id = id || null;
+    var existing = id ? appState.atpList.find(function(x) { return x.id === id; }) : null;
+    var tps = getSemuaTpAktif();
+    var pertama = tps.length ? tps.item(0) : null;
+    var def = existing || (pertama ? {
+      bab: pertama.bab, kodeTp: pertama.kodeTp, elemen: pertama.elemen,
+      lingkupMateri: pertama.materi, tujuanPembelajaran: pertama.tp, alokasiWaktu: pertama.jp + ' JP'
+    } : { bab: 'BAB 1', kodeTp: 'TP.1', elemen: '', lingkupMateri: '', tujuanPembelajaran: '', alokasiWaktu: '4 JP' });
+
+    var optHtml = tps.length
+      ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Otomatis) --</option>' + tps.map(function(t, idx) {
+          return '<option value="' + idx + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.tp.substring(0, 75)) + '...</option>';
+        }).join('')
+      : '<option value="">(Belum ada TP di Analisis CP)</option>';
+
+    openModal(existing ? 'Edit ATP' : 'Tambah ATP (Pilih TP Otomatis)',
+      '<form onsubmit="saveATP(event, \'' + (id || '') + '\')">' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
+          '<label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua Kolom)</label>' +
+          '<select id="f-atp-tp-picker" class="form-control" onchange="autoFillAtpFromTp(this.value)">' + optHtml + '</select>' +
+        '</div>' +
+        '<div class="grid-2">' +
+          '<div class="form-group"><label class="form-label">BAB</label><input type="text" id="f-atp-bab" class="form-control" value="' + escapeHtml(getBabLabel(def)) + '" required /></div>' +
+          '<div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-atp-kode" class="form-control" value="' + escapeHtml(def.kodeTp) + '" required /></div>' +
+        '</div>' +
+        '<div class="grid-2">' +
+          '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-atp-elemen" class="form-control" value="' + escapeHtml(def.elemen) + '" required /></div>' +
+          '<div class="form-group"><label class="form-label">Alokasi Waktu</label><input type="text" id="f-atp-waktu" class="form-control" value="' + escapeHtml(def.alokasiWaktu) + '" required /></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Lingkup Materi</label><input type="text" id="f-atp-materi" class="form-control" value="' + escapeHtml(def.lingkupMateri) + '" required /></div>' +
+        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-atp-tp" rows="3" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran) + '</textarea></div>' +
+        '<button type="submit" class="btn btn-green btn-block">Simpan ATP</button>' +
+      '</form>'
+    );
+  };
+
+  window.autoFillAtpFromTp = function(idxStr) {
+    if (idxStr === '') return;
+    var t = getSemuaTpAktif().item(parseInt(idxStr, 10));
+    if (!t) return;
+    document.getElementById('f-atp-bab').value = t.bab;
+    document.getElementById('f-atp-kode').value = t.kodeTp;
+    document.getElementById('f-atp-elemen').value = t.elemen;
+    document.getElementById('f-atp-materi').value = t.materi;
+    document.getElementById('f-atp-tp').value = t.tp;
+    document.getElementById('f-atp-waktu').value = t.jp + ' JP';
+  };
+
+  window.saveATP = function(e, id) {
+    e.preventDefault();
+    var ctx = appState.context;
+    var payload = {
+      id: id || ('atp_' + Date.now()),
+      kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+      bab: document.getElementById('f-atp-bab').value.trim(),
+      kodeTp: document.getElementById('f-atp-kode').value.trim(),
+      elemen: document.getElementById('f-atp-elemen').value.trim(),
+      lingkupMateri: document.getElementById('f-atp-materi').value.trim(),
+      tujuanPembelajaran: document.getElementById('f-atp-tp').value.trim(),
+      alokasiWaktu: document.getElementById('f-atp-waktu').value.trim(),
+      profilLulusan: 'Keimanan & Ketakwaan, Penalaran Kritis, Kolaborasi, Kemandirian'
+    };
+    if (id) {
+      var idx = appState.atpList.findIndex(function(x) { return x.id === id; });
+      if (idx > -1) appState.atpList.splice(idx, 1, payload);
+    } else {
+      appState.atpList.push(payload);
+    }
+    saveState(); closeModal(); renderCurrentMenu();
+    showToast('ATP berhasil disimpan!');
+  };
+
+  window.deleteATP = function(id) {
+    appState.atpList = appState.atpList.filter(function(x) { return x.id !== id; });
+    saveState(); renderCurrentMenu();
+    showToast('Baris ATP dihapus.', true);
+  };
+
+  // 3. MENU 6: KKTP (SINKRONISASI SEMUA TP TANPA MENGHAPUS DATA LAMA)
+  window.syncAllTpToKktp = function() {
+    var ctx = appState.context;
+    var tps = getSemuaTpAktif();
+    if (!tps.length) { showToast('Belum ada data TP di Analisis CP untuk disinkronkan!', true); return; }
+    appState.kktpList = appState.kktpList || [];
+    var ditambah = 0;
+    tps.forEach(function(t, i) {
+      var sudahAda = appState.kktpList.some(function(k) {
+        return k.kelas === ctx.kelas && k.semester === ctx.semester && k.mapel === ctx.mapel && k.tujuanPembelajaran === t.tp;
+      });
+      if (!sudahAda) {
+        appState.kktpList.push({
+          id: 'kktp_' + Date.now() + '_' + i,
+          kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+          bab: t.bab, kodeTp: t.kodeTp,
+          tujuanPembelajaran: t.tp,
+          indikator: 'Peserta didik mampu ' + t.tp.replace(/^Peserta didik (mampu |dapat )?/i, ''),
+          interval: '0-60% (Perlu Bimbingan), 61-74% (Cukup), 75-89% (Baik/Tuntas), 90-100% (Sangat Baik)',
+          kkm: 75
+        });
+        ditambah++;
+      }
+    });
+    saveState(); renderCurrentMenu();
+    showToast(ditambah > 0 ? ('Sukses! ' + ditambah + ' TP ditambahkan ke KKTP.') : 'Seluruh TP sudah lengkap di KKTP.');
+  };
+
+  window.viewKKTP = function() {
+    var ctx = appState.context;
+    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
+    var fase = kelasToFase(kelas);
 
 <!-- KODE SINKRONISASI + LAYAR KUNCI PENUH FIREBASE V7 -->
 <div id="layar-kunci-sdn4" style="position: fixed; inset: 0; z-index: 999999; background: rgba(20, 83, 45, 0.98); font-family: sans-serif; display: flex; align-items: center; justify-content: center; padding: 20px;">
