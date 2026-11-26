@@ -4875,11 +4875,31 @@
   }, 700);
 
   // TINGGAL PILIH BAB & MATERI DI ANALISIS CP, ATP, PROTA, PROSEM
-   window.renderCheckboxMateriAnalisis = function(babTerpilih, materiSaatIni) {
+     window.renderCheckboxMateriAnalisis = function(babTerpilih, materiSaatIni) {
     var box = document.getElementById('box-checklist-materi-an');
     if (!box) return;
+    var c = appState.context;
     var daftar = getBabBank().filter(function(it) { return it.bab === babTerpilih; });
     var terpilihLama = String(materiSaatIni || '').split(/\s*(?:;|,|&|\bdan\b)\s*/i).map(function(s) { return s.trim().toLowerCase(); }).filter(Boolean);
+
+    // Otomatis sesuaikan CP Elemen jika BAB ini sudah pernah dianalisis sebelumnya
+    var riwayatBab = (appState.analisisList || []).find(function(a) {
+      return a.kelas === c.kelas && a.semester === c.semester && a.mapel === c.mapel && a.bab === babTerpilih;
+    });
+    if (riwayatBab) {
+      var elSel = document.getElementById('f-an-cp-select');
+      var elElemen = document.getElementById('f-an-elemen');
+      var elCp = document.getElementById('f-an-cp');
+      var elKomp = document.getElementById('f-an-komp');
+      if (elElemen && riwayatBab.elemen) elElemen.value = riwayatBab.elemen;
+      if (elCp && riwayatBab.cpElemen) elCp.value = riwayatBab.cpElemen;
+      if (elKomp && riwayatBab.kompetensi) elKomp.value = riwayatBab.kompetensi;
+      if (elSel && riwayatBab.elemen) {
+        Array.from(elSel.options).forEach(function(opt) {
+          if (opt.textContent.trim() === riwayatBab.elemen.trim()) elSel.value = opt.value;
+        });
+      }
+    }
 
     if (!daftar.length) {
       box.innerHTML = '<div style="font-size:12px;color:#64748b;">Belum ada daftar materi pada ' + escapeHtml(babTerpilih) + '. Ketik manual pada kotak di bawah:</div>';
@@ -4890,27 +4910,40 @@
       var mText = String(it.materi || '').trim();
       var cek = terpilihLama.includes(mText.toLowerCase()) || (!materiSaatIni && idx === 0);
       return '<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:5px;cursor:pointer;font-size:13px;">' +
-        '<input type="checkbox" class="chk-an-materi-item" value="' + escapeHtml(mText) + '" ' + (cek ? 'checked' : '') + ' onchange="updateGabunganMateriAnalisis()" style="margin-top:3px;" />' +
+        '<input type="checkbox" class="chk-an-materi-item" value="' + escapeHtml(mText) + '" ' + (cek ? 'checked' : '') + ' onchange="updateGabunganMateriAnalisis(true)" style="margin-top:3px;" />' +
         '<span><strong>' + escapeHtml(mText) + '</strong></span>' +
       '</label>';
     }).join('');
 
-    if (!materiSaatIni) updateGabunganMateriAnalisis();
+    if (!materiSaatIni) updateGabunganMateriAnalisis(true);
   };
 
-  window.updateGabunganMateriAnalisis = function() {
+  window.updateGabunganMateriAnalisis = function(autoIsiTp) {
     var chks = Array.from(document.querySelectorAll('.chk-an-materi-item:checked')).map(function(el) { return el.value.trim(); }).filter(Boolean);
     var inp = document.getElementById('f-an-materi-gabung');
+    var inpTp = document.getElementById('f-an-tp');
     if (!inp) return;
-    if (chks.length === 0) {
-      inp.value = '';
-    } else if (chks.length === 1) {
-      inp.value = chks.at(0);
+
+    var gabungan = '';
+    if (chks.length === 1) {
+      gabungan = chks.at(0);
     } else if (chks.length === 2) {
-      inp.value = chks.at(0) + ' dan ' + chks.at(1);
-    } else {
-      var terakhir = chks.pop();
-      inp.value = chks.join(', ') + ', dan ' + terakhir;
+      gabungan = chks.at(0) + ' dan ' + chks.at(1);
+    } else if (chks.length > 2) {
+      var salinan = chks.slice();
+      var terakhir = salinan.pop();
+      gabungan = salinan.join(', ') + ', dan ' + terakhir;
+    }
+    inp.value = gabungan;
+
+    // Otomatis susun kalimat Tujuan Pembelajaran (TP) dari materi yang dicentang (tetap bisa diedit manual)
+    if (autoIsiTp && inpTp) {
+      if (!gabungan) {
+        inpTp.value = '';
+      } else {
+        var hurufAwalKecil = gabungan.charAt(0).toLowerCase() + gabungan.slice(1);
+        inpTp.value = 'Peserta didik mampu memahami dan menerapkan konsep ' + hurufAwalKecil + ' dalam kehidupan sehari-hari dengan tepat dan mandiri.';
+      }
     }
   };
 
