@@ -4917,6 +4917,56 @@
 
     if (!materiSaatIni) updateGabunganMateriAnalisis(true);
   };
+  window.ringkasTeksMateriUntukTP = function(daftarMateri) {
+    if (!daftarMateri || !daftarMateri.length) return '';
+    if (daftarMateri.length === 1) {
+      var m1 = daftarMateri.at(0);
+      return m1.charAt(0).toLowerCase() + m1.slice(1);
+    }
+    var intiList = daftarMateri.map(function(teks) {
+      var bersih = String(teks || '').trim()
+        .replace(/^(mengenal|memahami|menentukan|menjelaskan|menghitung|membaca dan menulis|membaca|menulis|cara|konsep|tentang)\s+/i, '')
+        .replace(/\s+(sampai|hingga|dalam kehidupan sehari-hari|dengan tepat|secara mandiri).*$/i, '')
+        .trim();
+      if (!bersih) bersih = teks.trim();
+      return bersih.charAt(0).toLowerCase() + bersih.slice(1);
+    });
+    if (intiList.length === 2) {
+      return intiList.at(0) + ' dan ' + intiList.at(1);
+    }
+    var terakhir = intiList.pop();
+    return intiList.join(', ') + ', serta ' + terakhir;
+  };
+
+  window.ringkasKalimatTpSekarang = function() {
+    var inpTp = document.getElementById('f-an-tp');
+    if (!inpTp || !inpTp.value.trim()) return;
+    var chks = Array.from(document.querySelectorAll('.chk-an-materi-item:checked')).map(function(el) { return el.value.trim(); }).filter(Boolean);
+    var teksCp = (document.getElementById('f-an-cp')?.value || '').trim();
+    var daftarKataKerja = [
+      'menunjukkan pemahaman', 'melakukan operasi hitung', 'mengidentifikasi',
+      'membandingkan', 'mengurutkan', 'menentukan', 'menghitung', 'menyelesaikan',
+      'menjelaskan', 'menganalisis', 'menyajikan', 'mempraktikkan', 'menerapkan', 'mengenal', 'memahami'
+    ];
+    var komp = '';
+    for (var i = 0; i < daftarKataKerja.length; i++) {
+      if (teksCp.toLowerCase().indexOf(daftarKataKerja.at(i)) > -1) {
+        komp = daftarKataKerja.at(i);
+        break;
+      }
+    }
+    if (!komp) komp = 'memahami';
+
+    if (chks.length > 0) {
+      var intiRingkas = ringkasTeksMateriUntukTP(chks);
+      inpTp.value = 'Peserta didik mampu ' + komp + ' ' + intiRingkas + ' dengan tepat.';
+    } else {
+      inpTp.value = inpTp.value
+        .replace(/dalam kehidupan sehari-hari dengan tepat dan mandiri\.?/i, 'dengan tepat.')
+        .replace(/dengan tepat dan mandiri\.?/i, 'dengan tepat.');
+    }
+    showToast('Kalimat TP berhasil diringkas!');
+  };
 
   window.updateGabunganMateriAnalisis = function(autoIsiTp) {
     var chks = Array.from(document.querySelectorAll('.chk-an-materi-item:checked')).map(function(el) { return el.value.trim(); }).filter(Boolean);
@@ -4936,18 +4986,34 @@
     }
     inp.value = gabungan;
 
-    // Otomatis susun kalimat Tujuan Pembelajaran (TP) dari materi yang dicentang (tetap bisa diedit manual)
     if (autoIsiTp && inpTp) {
       if (!gabungan) {
         inpTp.value = '';
       } else {
-        var hurufAwalKecil = gabungan.charAt(0).toLowerCase() + gabungan.slice(1);
-        inpTp.value = 'Peserta didik mampu memahami dan menerapkan konsep ' + hurufAwalKecil + ' dalam kehidupan sehari-hari dengan tepat dan mandiri.';
+        var teksCp = (document.getElementById('f-an-cp')?.value || '').trim();
+        var daftarKataKerja = [
+          'menunjukkan pemahaman', 'melakukan operasi hitung', 'mengidentifikasi',
+          'membandingkan', 'mengurutkan', 'menentukan', 'menghitung', 'menyelesaikan',
+          'menjelaskan', 'menganalisis', 'menyajikan', 'mempraktikkan', 'menerapkan', 'mengenal', 'memahami'
+        ];
+        var kompetensiCp = '';
+        for (var i = 0; i < daftarKataKerja.length; i++) {
+          if (teksCp.toLowerCase().indexOf(daftarKataKerja.at(i)) > -1) {
+            kompetensiCp = daftarKataKerja.at(i);
+            break;
+          }
+        }
+        if (!kompetensiCp) {
+          var kompInput = (document.getElementById('f-an-komp')?.value || 'memahami').trim();
+          kompetensiCp = kompInput.charAt(0).toLowerCase() + kompInput.slice(1);
+        }
+        var materiRingkas = ringkasTeksMateriUntukTP(chks);
+        inpTp.value = 'Peserta didik mampu ' + kompetensiCp + ' ' + materiRingkas + ' dengan tepat.';
       }
     }
   };
 
-  window.openAnalisisCPModal = function(id) {
+   window.openAnalisisCPModal = function(id) {
     id = id || null;
     var c = appState.context, fase = kelasToFase(c.kelas);
     var cps = appState.cpList.filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
