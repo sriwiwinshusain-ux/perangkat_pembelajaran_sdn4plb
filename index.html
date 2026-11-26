@@ -4719,51 +4719,19 @@
       }
     });
   </script>
- <!-- PEMBARUAN V2: BAB OTOMATIS DI KONTEN MATERI & PERBAIKAN TOMBOL EDIT ATP -->
-<script>
-(function() {
-  function getBabLabel(item) {
-    return (item && item.bab && String(item.bab).trim()) ? String(item.bab).trim() : 'BAB 1';
-  }
-
-  function gabungBabDanMateri(bab, materi) {
-    var b = String(bab || '').trim();
-    var m = String(materi || '').trim();
-    if (!b) return m;
-    if (!m) return b;
-    var prefixRegex = new RegExp('^' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:\\-]\\s*', 'i');
-    var materiBersih = m.replace(prefixRegex, '').trim();
-    return b + ': ' + materiBersih;
-  }
-
-  function pisahMateriTanpaBab(bab, materiGabungan) {
-    var b = String(bab || '').trim();
-    var m = String(materiGabungan || '').trim();
-    if (!b) return m;
-    var prefixRegex = new RegExp('^' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:\\-]\\s*', 'i');
-    return m.replace(prefixRegex, '').trim();
-  }
-
-  function ambilElemenKe(arr, idx) {
-    if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return null;
-    return arr.slice(idx, idx + 1).pop() || null;
-  }
-
-  function getSemuaTpAktif() {
+    function getSemuaTpAktif() {
     var ctx = appState.context;
     var dariAnalisis = (appState.analisisList || []).filter(function(a) {
       return a.kelas === ctx.kelas && a.semester === ctx.semester && a.mapel === ctx.mapel;
     });
     if (dariAnalisis.length > 0) {
       return dariAnalisis.map(function(a, i) {
-        var bab = getBabLabel(a);
         return {
           sumberId: a.id,
-          bab: bab,
+          bab: a.bab || 'BAB 1',
           kodeTp: a.kodeTp || ('TP.' + ctx.kelas + '.' + ctx.semester + '.' + (i + 1)),
           elemen: a.elemen || '',
-          materiMurni: pisahMateriTanpaBab(bab, a.kontenMateri || a.lingkupMateri || ''),
-          materiLengkap: gabungBabDanMateri(bab, a.kontenMateri || a.lingkupMateri || ''),
+          materiLengkap: a.kontenMateri || a.lingkupMateri || '',
           tp: a.tujuanPembelajaran || '',
           jp: parseInt(a.jp, 10) || 4
         };
@@ -4772,400 +4740,127 @@
     return (appState.atpList || []).filter(function(a) {
       return a.kelas === ctx.kelas && a.semester === ctx.semester && a.mapel === ctx.mapel;
     }).map(function(a, i) {
-      var bab = getBabLabel(a);
       return {
         sumberId: a.id,
-        bab: bab,
+        bab: a.bab || 'BAB 1',
         kodeTp: a.kodeTp || ('TP.' + ctx.kelas + '.' + ctx.semester + '.' + (i + 1)),
         elemen: a.elemen || '',
-        materiMurni: pisahMateriTanpaBab(bab, a.lingkupMateri || ''),
-        materiLengkap: gabungBabDanMateri(bab, a.lingkupMateri || ''),
+        materiLengkap: a.lingkupMateri || '',
         tp: a.tujuanPembelajaran || '',
         jp: parseInt(String(a.alokasiWaktu || '4').replace(/\D/g, ''), 10) || 4
       };
     });
   }
 
-  // 1. MENU 4: ANALISIS CP (BAB DI KOTAK INPUT -> MASUK KE KONTEN MATERI)
-  window.viewAnalisisCP = function() {
-    var ctx = appState.context;
-    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
-    var fase = kelasToFase(kelas);
-    var list = (appState.analisisList || []).filter(function(a) {
-      return a.kelas === kelas && a.semester === semester && a.mapel === mapel;
-    });
-
-    var rowsHtml = list.length ? list.map(function(item, idx) {
-      var kode = item.kodeTp || ('TP.' + kelas + '.' + semester + '.' + (idx + 1));
-      var kontenTampil = gabungBabDanMateri(item.bab, item.kontenMateri);
-      return '<tr>' +
-        '<td>' + (idx + 1) + '</td>' +
-        '<td><strong>' + escapeHtml(item.elemen) + '</strong></td>' +
-        '<td>' + escapeHtml(item.cpElemen) + '</td>' +
-        '<td>' + escapeHtml(item.kompetensi || '-') + '</td>' +
-        '<td><strong>' + escapeHtml(kontenTampil) + '</strong></td>' +
-        '<td><span class="badge badge-green">' + escapeHtml(kode) + '</span> <strong>' + escapeHtml(item.tujuanPembelajaran) + '</strong></td>' +
-        '<td class="no-print">' +
-          '<button type="button" class="btn btn-yellow btn-sm" onclick="openAnalisisCPModal(\'' + item.id + '\')">Edit</button> ' +
-          '<button type="button" class="btn btn-pink btn-sm" onclick="deleteAnalisisCP(\'' + item.id + '\')">Hapus</button>' +
-        '</td>' +
-      '</tr>';
-    }).join('') : '<tr><td colspan="7" style="text-align:center;">Belum ada analisis CP pada semester ini. Klik "+ Tambah Analisis CP".</td></tr>';
-
-    return '<div class="card">' +
-      '<div class="card-header no-print">' +
-        '<div class="card-title">Analisis Capaian Pembelajaran • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + '</div>' +
-        '<button type="button" class="btn btn-green" onclick="openAnalisisCPModal()">+ Tambah Analisis CP</button>' +
-      '</div>' +
-      renderKopSurat('ANALISIS CAPAIAN PEMBELAJARAN (CP) MENJADI TUJUAN PEMBELAJARAN', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
-      '<div class="table-wrap"><table><thead><tr>' +
-        '<th style="width:45px;">No</th>' +
-        '<th style="width:150px;">Elemen</th>' +
-        '<th>CP Elemen</th>' +
-        '<th style="width:165px;">Kompetensi</th>' +
-        '<th style="width:185px;">Konten Materi (BAB)</th>' +
-        '<th>Tujuan Pembelajaran (TP)</th>' +
-        '<th class="no-print" style="width:120px;">Aksi</th>' +
-      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
-      renderTandaTangan() +
-    '</div>';
-  };
-
+  // 2. ANALISIS CP: TINGGAL PILIH BAB & MATERI DARI BANK (TANPA MENGETIK)
   window.openAnalisisCPModal = function(id) {
     id = id || null;
-    var ctx = appState.context;
-    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
-    var fase = kelasToFase(kelas);
+    var ctx = appState.context, kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel, fase = kelasToFase(kelas);
     var activeVer = appState.activeCpVersion || 'BSKAP No. 046/H/KR/2025';
     var allFaseMapel = appState.cpList.filter(function(c) { return c.fase === fase && c.mapel === mapel; });
     var byVer = allFaseMapel.filter(function(c) { return (c.ket || 'BSKAP No. 046/H/KR/2025') === activeVer; });
     var cpOptions = byVer.length ? byVer : allFaseMapel;
     var existing = id ? appState.analisisList.find(function(x) { return x.id === id; }) : null;
     var cpPertama = ambilElemenKe(cpOptions, 0) || { elemen: '', cp: '' };
-    var firstCp = existing
-      ? (cpOptions.find(function(c) { return c.elemen === existing.elemen; }) || cpPertama)
-      : cpPertama;
+    var firstCp = existing ? (cpOptions.find(function(c) { return c.elemen === existing.elemen; }) || cpPertama) : cpPertama;
     var urutBaru = appState.analisisList.filter(function(a) { return a.kelas === kelas && a.semester === semester && a.mapel === mapel; }).length + 1;
-    var babAwal = existing ? getBabLabel(existing) : 'BAB 1';
-    var materiAwal = existing ? pisahMateriTanpaBab(babAwal, existing.kontenMateri) : '';
 
     openModal(existing ? 'Edit Analisis CP' : 'Tambah Analisis CP',
       '<form onsubmit="saveAnalisisCP(event, \'' + (id || '') + '\')">' +
-        '<div class="grid-2">' +
-          '<div class="form-group">' +
-            '<label class="form-label">Daftar BAB (Otomatis Masuk ke Konten Materi)</label>' +
-            '<input type="text" id="f-an-bab" class="form-control" list="daftar-bab-saran" placeholder="Contoh: BAB 1" value="' + escapeHtml(babAwal) + '" required />' +
-            '<datalist id="daftar-bab-saran"><option value="BAB 1"><option value="BAB 2"><option value="BAB 3"><option value="BAB 4"><option value="BAB 5"><option value="BAB 6"></datalist>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label class="form-label">Kode TP & Alokasi (JP)</label>' +
-            '<div style="display:flex;gap:6px;">' +
-              '<input type="text" id="f-an-kodetp" class="form-control" value="' + escapeHtml(existing && existing.kodeTp ? existing.kodeTp : ('TP.' + kelas + '.' + semester + '.' + urutBaru)) + '" required />' +
-              '<input type="number" min="1" id="f-an-jp" class="form-control" style="width:80px;" title="Alokasi JP" value="' + (existing && existing.jp ? existing.jp : 4) + '" required />' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">Pilih Capaian Pembelajaran (Otomatis dari Menu CP)</label>' +
-          '<select id="f-an-cp-select" class="form-control" onchange="onSelectCPForAnalisis(this.value)">' +
-            cpOptions.map(function(c) {
-              return '<option value="' + c.id + '" ' + (firstCp.elemen === c.elemen ? 'selected' : '') + '>' + escapeHtml(c.elemen) + '</option>';
-            }).join('') +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
+          '<label class="form-label">Pilih BAB & Konten Materi (Otomatis dari Bank BAB & Materi)</label>' +
+          '<select id="f-an-bbm-select" class="form-control" onchange="onPickBabMateriAnalisis(this)" required>' +
+            buatOpsiBankBabMateri(existing ? existing.kontenMateri : '') +
           '</select>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">Elemen (Otomatis)</label>' +
-          '<input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(existing ? existing.elemen : firstCp.elemen) + '" readonly />' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">CP Elemen (Otomatis)</label>' +
-          '<textarea id="f-an-cp" rows="2" class="form-control" readonly>' + escapeHtml(existing ? existing.cpElemen : firstCp.cp) + '</textarea>' +
+          '<input type="hidden" id="f-an-bab" value="' + escapeHtml(existing ? (existing.bab || 'BAB 1') : 'BAB 1') + '" />' +
+          '<input type="hidden" id="f-an-materi" value="' + escapeHtml(existing ? existing.kontenMateri : '') + '" />' +
         '</div>' +
         '<div class="grid-2">' +
-          '<div class="form-group">' +
-            '<label class="form-label">Kompetensi</label>' +
-            '<input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(existing ? existing.kompetensi : ('Memahami dan mempraktikkan ' + firstCp.elemen)) + '" />' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label class="form-label">Konten / Lingkup Materi</label>' +
-            '<input type="text" id="f-an-materi" class="form-control" placeholder="Contoh: Teks Deskripsi" value="' + escapeHtml(materiAwal) + '" required />' +
-          '</div>' +
+          '<div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-an-kodetp" class="form-control" value="' + escapeHtml(existing && existing.kodeTp ? existing.kodeTp : ('TP.' + kelas + '.' + semester + '.' + urutBaru)) + '" required /></div>' +
+          '<div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-an-jp" class="form-control" value="' + (existing && existing.jp ? existing.jp : 4) + '" required /></div>' +
         '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">Tujuan Pembelajaran (TP)</label>' +
-          '<textarea id="f-an-tp" rows="3" class="form-control" placeholder="Ketik rumusan Tujuan Pembelajaran..." required>' + escapeHtml(existing ? existing.tujuanPembelajaran : '') + '</textarea>' +
-        '</div>' +
+        '<div class="form-group"><label class="form-label">Pilih Capaian Pembelajaran (Otomatis dari Menu CP)</label><select id="f-an-cp-select" class="form-control" onchange="onSelectCPForAnalisis(this.value)">' + cpOptions.map(function(c) { return '<option value="' + c.id + '" ' + (firstCp.elemen === c.elemen ? 'selected' : '') + '>' + escapeHtml(c.elemen) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Elemen (Otomatis)</label><input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(existing ? existing.elemen : firstCp.elemen) + '" readonly /></div>' +
+        '<div class="form-group"><label class="form-label">CP Elemen (Otomatis)</label><textarea id="f-an-cp" rows="2" class="form-control" readonly>' + escapeHtml(existing ? existing.cpElemen : firstCp.cp) + '</textarea></div>' +
+        '<div class="form-group"><label class="form-label">Kompetensi</label><input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(existing ? existing.kompetensi : ('Memahami dan mempraktikkan ' + firstCp.elemen)) + '" /></div>' +
+        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-an-tp" rows="3" class="form-control" required>' + escapeHtml(existing ? existing.tujuanPembelajaran : '') + '</textarea></div>' +
         '<button type="submit" class="btn btn-green btn-block">Simpan Analisis CP</button>' +
       '</form>'
     );
   };
 
-   window.saveAnalisisCP = function(e, id) {
+  window.onPickBabMateriAnalisis = function(sel) {
+    var opt = sel.options.item(sel.selectedIndex);
+    if (!opt || !sel.value) return;
+    document.getElementById('f-an-bab').value = opt.dataset.bab || 'BAB 1';
+    document.getElementById('f-an-materi').value = sel.value;
+    if (opt.dataset.jp) document.getElementById('f-an-jp').value = opt.dataset.jp;
+  };
+
+  window.saveAnalisisCP = function(e, id) {
     e.preventDefault();
     var ctx = appState.context;
-    var babVal = document.getElementById('f-an-bab').value.trim();
-    var materiVal = document.getElementById('f-an-materi').value.trim();
+    var selVal = document.getElementById('f-an-bbm-select').value;
+    var materiVal = document.getElementById('f-an-materi').value.trim() || selVal;
     var payload = {
-      id: id || ('an_' + Date.now()),
-      kelas: ctx.kelas,
-      semester: ctx.semester,
-      mapel: ctx.mapel,
-      bab: babVal,
+      id: id || ('an_' + Date.now()), kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
+      bab: document.getElementById('f-an-bab').value.trim(),
       kodeTp: document.getElementById('f-an-kodetp').value.trim(),
       jp: parseInt(document.getElementById('f-an-jp').value, 10) || 4,
       elemen: document.getElementById('f-an-elemen').value.trim(),
       cpElemen: document.getElementById('f-an-cp').value.trim(),
       kompetensi: document.getElementById('f-an-komp').value.trim(),
-      kontenMateri: gabungBabDanMateri(babVal, materiVal),
+      kontenMateri: materiVal,
       tujuanPembelajaran: document.getElementById('f-an-tp').value.trim()
     };
-    if (id) {
-      var idx = appState.analisisList.findIndex(function(x) { return x.id === id; });
-      if (idx > -1) appState.analisisList.splice(idx, 1, payload);
-    } else {
-      appState.analisisList.push(payload);
-    }
-    saveState(); closeModal(); renderCurrentMenu();
-    showToast('Analisis CP berhasil disimpan!');
+    if (id) { var idx = appState.analisisList.findIndex(function(x) { return x.id === id; }); if (idx > -1) appState.analisisList.splice(idx, 1, payload); } else { appState.analisisList.push(payload); }
+    saveState(); closeModal(); renderCurrentMenu(); showToast('Analisis CP berhasil disimpan!');
   };
 
-  // 2. MENU 5: ATP (PERBAIKAN TOMBOL EDIT + PILIH TP OTOMATIS)
-  window.viewATP = function() {
-    var ctx = appState.context;
-    var kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel;
-    var fase = kelasToFase(kelas);
-    var list = (appState.atpList || []).filter(function(a) {
-      return a.kelas === kelas && a.semester === semester && a.mapel === mapel;
-    });
-
-    var rowsHtml = list.length ? list.map(function(item, idx) {
-      var materiTampil = gabungBabDanMateri(item.bab, item.lingkupMateri);
-      return '<tr>' +
-        '<td>' + (idx + 1) + '</td>' +
-        '<td><span class="badge badge-green">' + escapeHtml(item.kodeTp) + '</span></td>' +
-        '<td><strong>' + escapeHtml(item.elemen) + '</strong></td>' +
-        '<td><strong>' + escapeHtml(materiTampil) + '</strong></td>' +
-        '<td>' + escapeHtml(item.tujuanPembelajaran) + '</td>' +
-        '<td><span class="badge badge-yellow">' + escapeHtml(item.alokasiWaktu) + '</span></td>' +
-        '<td class="no-print">' +
-          '<button type="button" class="btn btn-yellow btn-sm" onclick="openATPModal(\'' + item.id + '\')">Edit</button> ' +
-          '<button type="button" class="btn btn-pink btn-sm" onclick="deleteATP(\'' + item.id + '\')">Hapus</button>' +
-        '</td>' +
-      '</tr>';
-    }).join('') : '<tr><td colspan="7" style="text-align:center;">Belum ada ATP. Klik <strong>"Tarik Semua TP Otomatis"</strong> atau <strong>"+ Tambah ATP"</strong>.</td></tr>';
-
-    return '<div class="card">' +
-      '<div class="card-header no-print">' +
-        '<div class="card-title">Alur Tujuan Pembelajaran (ATP) • Kelas ' + kelas + ' • Semester ' + semester + '</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-          '<button type="button" class="btn btn-yellow" onclick="syncAllTpToAtp()">Tarik Semua TP Otomatis</button>' +
-          '<button type="button" class="btn btn-green" onclick="openATPModal()">+ Tambah ATP (Pilih TP)</button>' +
-        '</div>' +
-      '</div>' +
-      renderKopSurat('ALUR TUJUAN PEMBELAJARAN (ATP)', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
-      '<div class="table-wrap"><table><thead><tr>' +
-        '<th style="width:45px;">No</th>' +
-        '<th style="width:95px;">Kode TP</th>' +
-        '<th style="width:140px;">Elemen</th>' +
-        '<th style="width:185px;">Lingkup Materi (BAB)</th>' +
-        '<th>Tujuan Pembelajaran (TP)</th>' +
-        '<th style="width:85px;">Waktu</th>' +
-        '<th class="no-print" style="width:120px;">Aksi</th>' +
-      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
-      renderTandaTangan() +
-    '</div>';
-  };
-  window.syncAllTpToAtp = function() {
-    var ctx = appState.context;
-    var tps = getSemuaTpAktif();
-    if (!tps.length) { showToast('Belum ada data TP di menu Analisis CP!', true); return; }
-    var ditambah = 0;
-    tps.forEach(function(t, i) {
-      var sudahAda = appState.atpList.some(function(a) {
-        return a.kelas === ctx.kelas && a.semester === ctx.semester && a.mapel === ctx.mapel && a.tujuanPembelajaran === t.tp;
-      });
-      if (!sudahAda) {
-        appState.atpList.push({
-          id: 'atp_' + Date.now() + '_' + i,
-          kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
-          bab: t.bab, kodeTp: t.kodeTp, elemen: t.elemen,
-          lingkupMateri: t.materiLengkap, tujuanPembelajaran: t.tp,
-          alokasiWaktu: t.jp + ' JP',
-          profilLulusan: 'Keimanan & Ketakwaan, Penalaran Kritis, Kolaborasi, Kemandirian'
-        });
-        ditambah++;
-      }
-    });
-    saveState(); renderCurrentMenu();
-    showToast(ditambah > 0 ? ('Berhasil menambahkan ' + ditambah + ' TP baru ke ATP!') : 'Semua TP sudah ada di ATP.');
-  };
-
+  // 3. ATP, KKTP, PROTA, PROSEM: TINGGAL PILIH TP ATAU BAB & MATERI TANPA MENGETIK
   window.openATPModal = function(id) {
     id = id || null;
     var existing = id ? appState.atpList.find(function(x) { return x.id === id; }) : null;
-    var tps = getSemuaTpAktif();
-    var pertama = ambilElemenKe(tps, 0);
-    var babAwal = existing ? getBabLabel(existing) : (pertama ? pertama.bab : 'BAB 1');
-    var materiAwal = existing ? pisahMateriTanpaBab(babAwal, existing.lingkupMateri) : (pertama ? pertama.materiMurni : '');
-    var def = existing ? {
-      kodeTp: existing.kodeTp, elemen: existing.elemen, tujuanPembelajaran: existing.tujuanPembelajaran, alokasiWaktu: existing.alokasiWaktu
-    } : (pertama ? {
-      kodeTp: pertama.kodeTp, elemen: pertama.elemen, tujuanPembelajaran: pertama.tp, alokasiWaktu: pertama.jp + ' JP'
-    } : { kodeTp: 'TP.1', elemen: '', tujuanPembelajaran: '', alokasiWaktu: '4 JP' });
+    var tps = getSemuaTpAktif(), pertama = ambilElemenKe(tps, 0);
+    var def = existing || (pertama ? { bab: pertama.bab, kodeTp: pertama.kodeTp, elemen: pertama.elemen, lingkupMateri: pertama.materiLengkap, tujuanPembelajaran: pertama.tp, alokasiWaktu: pertama.jp + ' JP' } : { bab: 'BAB 1', kodeTp: 'TP.1', elemen: '', lingkupMateri: '', tujuanPembelajaran: '', alokasiWaktu: '4 JP' });
+    var optTp = tps.length ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Semua Kolom) --</option>' + tps.map(function(t, idx) { return '<option value="' + idx + '">[' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.materiLengkap) + ' — ' + escapeHtml(t.tp.substring(0, 55)) + '...</option>'; }).join('') : '<option value="">(Belum ada TP di Analisis CP)</option>';
 
-    var optHtml = tps.length
-      ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Otomatis) --</option>' + tps.map(function(t, idx) {
-          return '<option value="' + idx + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.tp.substring(0, 75)) + '...</option>';
-        }).join('')
-      : '<option value="">(Belum ada TP di Analisis CP)</option>';
-
-    openModal(existing ? 'Edit ATP' : 'Tambah ATP (Pilih TP Otomatis)',
+    openModal(existing ? 'Edit ATP' : 'Tambah ATP (Pilih TP / BAB & Materi)',
       '<form onsubmit="saveATP(event, \'' + (id || '') + '\')">' +
-        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
-          '<label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua Kolom)</label>' +
-          '<select id="f-atp-tp-picker" class="form-control" onchange="autoFillAtpFromTp(this.value)">' + optHtml + '</select>' +
-        '</div>' +
-        '<div class="grid-2">' +
-          '<div class="form-group"><label class="form-label">Daftar BAB (Masuk ke Lingkup Materi)</label><input type="text" id="f-atp-bab" class="form-control" list="daftar-bab-saran" value="' + escapeHtml(babAwal) + '" required /></div>' +
-          '<div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-atp-kode" class="form-control" value="' + escapeHtml(def.kodeTp) + '" required /></div>' +
-        '</div>' +
-        '<div class="grid-2">' +
-          '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-atp-elemen" class="form-control" value="' + escapeHtml(def.elemen) + '" required /></div>' +
-          '<div class="form-group"><label class="form-label">Alokasi Waktu</label><input type="text" id="f-atp-waktu" class="form-control" value="' + escapeHtml(def.alokasiWaktu) + '" required /></div>' +
-        '</div>' +
-        '<div class="form-group"><label class="form-label">Lingkup Materi</label><input type="text" id="f-atp-materi" class="form-control" value="' + escapeHtml(materiAwal) + '" required /></div>' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;"><label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua)</label><select class="form-control" onchange="autoFillAtpFromTp(this.value)">' + optTp + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Pilih BAB & Lingkup Materi (Dari Bank BAB & Materi)</label><select id="f-atp-materi" class="form-control" onchange="var o=this.options.item(this.selectedIndex);if(o&&o.dataset.bab)document.getElementById(\'f-atp-bab\').value=o.dataset.bab;">' + buatOpsiBankBabMateri(def.lingkupMateri) + '</select><input type="hidden" id="f-atp-bab" value="' + escapeHtml(def.bab || 'BAB 1') + '" /></div>' +
+        '<div class="grid-2"><div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-atp-kode" class="form-control" value="' + escapeHtml(def.kodeTp) + '" required /></div><div class="form-group"><label class="form-label">Alokasi Waktu</label><input type="text" id="f-atp-waktu" class="form-control" value="' + escapeHtml(def.alokasiWaktu) + '" required /></div></div>' +
+        '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-atp-elemen" class="form-control" value="' + escapeHtml(def.elemen) + '" required /></div>' +
         '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-atp-tp" rows="3" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran) + '</textarea></div>' +
-        '<button type="submit" class="btn btn-green btn-block">Simpan ATP</button>' +
-      '</form>'
+        '<button type="submit" class="btn btn-green btn-block">Simpan ATP</button></form>'
     );
   };
 
-  window.autoFillAtpFromTp = function(idxStr) {
+   window.autoFillAtpFromTp = function(idxStr) {
     if (idxStr === '') return;
     var t = ambilElemenKe(getSemuaTpAktif(), parseInt(idxStr, 10));
     if (!t) return;
     document.getElementById('f-atp-bab').value = t.bab;
     document.getElementById('f-atp-kode').value = t.kodeTp;
     document.getElementById('f-atp-elemen').value = t.elemen;
-    document.getElementById('f-atp-materi').value = t.materiMurni;
+    document.getElementById('f-atp-materi').value = t.materiLengkap;
     document.getElementById('f-atp-tp').value = t.tp;
     document.getElementById('f-atp-waktu').value = t.jp + ' JP';
-  };
-
-  window.saveATP = function(e, id) {
-    e.preventDefault();
-    var ctx = appState.context;
-    var babVal = document.getElementById('f-atp-bab').value.trim();
-    var materiVal = document.getElementById('f-atp-materi').value.trim();
-    var payload = {
-      id: id || ('atp_' + Date.now()),
-      kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
-      bab: babVal, kodeTp: document.getElementById('f-atp-kode').value.trim(),
-      elemen: document.getElementById('f-atp-elemen').value.trim(),
-      lingkupMateri: gabungBabDanMateri(babVal, materiVal),
-      tujuanPembelajaran: document.getElementById('f-atp-tp').value.trim(),
-      alokasiWaktu: document.getElementById('f-atp-waktu').value.trim(),
-      profilLulusan: 'Keimanan & Ketakwaan, Penalaran Kritis, Kolaborasi, Kemandirian'
-    };
-    if (id) {
-      var idx = appState.atpList.findIndex(function(x) { return x.id === id; });
-      if (idx > -1) appState.atpList.splice(idx, 1, payload);
-    } else {
-      appState.atpList.push(payload);
-    }
-    saveState(); closeModal(); renderCurrentMenu();
-    showToast('ATP berhasil disimpan!');
-  };
-
-  window.deleteATP = function(id) {
-    appState.atpList = appState.atpList.filter(function(x) { return x.id !== id; });
-    saveState(); renderCurrentMenu();
-    showToast('Baris ATP dihapus.', true);
-  };
-  window.syncAllTpToKktp = function() {
-    var ctx = appState.context;
-    var tps = getSemuaTpAktif();
-    if (!tps.length) { showToast('Belum ada data TP di Analisis CP!', true); return; }
-    appState.kktpList = appState.kktpList || [];
-    var ditambah = 0;
-    tps.forEach(function(t, i) {
-      var sudahAda = appState.kktpList.some(function(k) {
-        return k.kelas === ctx.kelas && k.semester === ctx.semester && k.mapel === ctx.mapel && k.tujuanPembelajaran === t.tp;
-      });
-      if (!sudahAda) {
-        appState.kktpList.push({
-          id: 'kktp_' + Date.now() + '_' + i,
-          kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel,
-          bab: t.bab, kodeTp: t.kodeTp, tujuanPembelajaran: t.tp,
-          indikator: 'Peserta didik mampu ' + t.tp.replace(/^Peserta didik (mampu |dapat )?/i, ''),
-          interval: '0-60% (Perlu Bimbingan), 61-74% (Cukup), 75-89% (Baik/Tuntas), 90-100% (Sangat Baik)', kkm: 75
-        });
-        ditambah++;
-      }
-    });
-    saveState(); renderCurrentMenu();
-    showToast(ditambah > 0 ? ('Sukses! ' + ditambah + ' TP ditambahkan ke KKTP.') : 'Seluruh TP sudah lengkap di KKTP.');
-  };
-
-  window.viewKKTP = function() {
-    var ctx = appState.context, kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel, fase = kelasToFase(kelas);
-    var list = (appState.kktpList || []).filter(function(k) { return k.kelas === kelas && k.semester === semester && k.mapel === mapel; });
-    var tpsCount = getSemuaTpAktif().length;
-    var rowsHtml = list.length ? list.map(function(item, idx) {
-      return '<tr><td>' + (idx + 1) + '</td><td><span class="badge badge-green">' + escapeHtml(item.kodeTp || ('TP.' + (idx + 1))) + '</span></td>' +
-        '<td><strong>' + escapeHtml(item.tujuanPembelajaran) + '</strong></td><td>' + escapeHtml(item.indikator || item.kriteria || '-') + '</td>' +
-        '<td><span class="badge badge-yellow">' + escapeHtml(item.interval || '75 - 100 (Tuntas)') + '</span></td>' +
-        '<td class="no-print"><button type="button" class="btn btn-pink btn-sm" onclick="appState.kktpList=appState.kktpList.filter(x=>x.id!==\'' + item.id + '\');saveState();renderCurrentMenu();">Hapus</button></td></tr>';
-    }).join('') : '<tr><td colspan="6" style="text-align:center;">Belum ada KKTP. Klik <strong>"Sinkronkan Semua TP (' + tpsCount + ' TP)"</strong> di atas.</td></tr>';
-    return '<div class="card"><div class="card-header no-print"><div class="card-title">Kriteria Ketercapaian Tujuan Pembelajaran (KKTP) • Kelas ' + kelas + ' • Semester ' + semester + '</div>' +
-      '<button type="button" class="btn btn-green" onclick="syncAllTpToKktp()">Sinkronkan Semua TP (' + tpsCount + ' TP)</button></div>' +
-      renderKopSurat('KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
-      '<div class="table-wrap"><table><thead><tr><th style="width:45px;">No</th><th style="width:95px;">Kode TP</th><th>Tujuan Pembelajaran (TP)</th><th>Indikator Ketercapaian</th><th style="width:210px;">Interval Nilai / Kriteria</th><th class="no-print" style="width:80px;">Aksi</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' + renderTandaTangan() + '</div>';
-  };
-
-  window.syncAllTpToProta = function() {
-    var ctx = appState.context, tps = getSemuaTpAktif();
-    if (!tps.length) { showToast('Belum ada data TP di Analisis CP!', true); return; }
-    appState.protaList = appState.protaList || [];
-    var ditambah = 0;
-    tps.forEach(function(t, i) {
-      var sudahAda = appState.protaList.some(function(p) { return p.kelas === ctx.kelas && p.semester === ctx.semester && p.mapel === ctx.mapel && p.tujuanPembelajaran === t.tp; });
-      if (!sudahAda) {
-        appState.protaList.push({ id: 'prota_' + Date.now() + '_' + i, kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel, bab: t.bab, kodeTp: t.kodeTp, materiPokok: t.materiLengkap, tujuanPembelajaran: t.tp, jp: t.jp, keterangan: 'Terlaksana Semester ' + ctx.semester });
-        ditambah++;
-      }
-    });
-    saveState(); renderCurrentMenu();
-    showToast(ditambah > 0 ? ('Berhasil menambahkan ' + ditambah + ' TP ke Prota!') : 'Semua TP sudah ada di Prota.');
-  };
-
-  window.viewProta = function() {
-    var ctx = appState.context, kelas = ctx.kelas, semester = ctx.semester, mapel = ctx.mapel, fase = kelasToFase(kelas);
-    var list = (appState.protaList || []).filter(function(p) { return p.kelas === kelas && p.semester === semester && p.mapel === mapel; });
-    var totalJp = list.reduce(function(acc, it) { return acc + (parseInt(it.jp, 10) || 0); }, 0);
-    var rowsHtml = list.length ? list.map(function(item, idx) {
-      return '<tr><td>' + (idx + 1) + '</td><td>Semester ' + escapeHtml(item.semester) + '</td><td><strong>' + escapeHtml(gabungBabDanMateri(item.bab, item.materiPokok)) + '</strong><br><small style="color:#475569;">' + escapeHtml(item.tujuanPembelajaran || '') + '</small></td><td><span class="badge badge-yellow">' + (item.jp || 4) + ' JP</span></td><td>' + escapeHtml(item.keterangan || '-') + '</td><td class="no-print"><button type="button" class="btn btn-yellow btn-sm" onclick="openProtaModal(\'' + item.id + '\')">Edit</button> <button type="button" class="btn btn-pink btn-sm" onclick="appState.protaList=appState.protaList.filter(x=>x.id!==\'' + item.id + '\');saveState();renderCurrentMenu();">Hapus</button></td></tr>';
-    }).join('') : '<tr><td colspan="6" style="text-align:center;">Belum ada Program Tahunan. Klik <strong>"Tarik Semua TP Otomatis"</strong> atau <strong>"+ Tambah Prota"</strong>.</td></tr>';
-    return '<div class="card"><div class="card-header no-print"><div class="card-title">Program Tahunan (Prota) • Kelas ' + kelas + ' • Semester ' + semester + ' (Total: ' + totalJp + ' JP)</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn btn-yellow" onclick="syncAllTpToProta()">Tarik Semua TP Otomatis</button><button type="button" class="btn btn-green" onclick="openProtaModal()">+ Tambah Prota (Pilih TP)</button></div></div>' +
-      renderKopSurat('PROGRAM TAHUNAN (PROTA)', 'Mata Pelajaran: ' + mapel + ' • Kelas ' + kelas + ' (' + fase + ') • Semester ' + semester + ' • TA ' + ctx.ta) +
-      '<div class="table-wrap"><table><thead><tr><th style="width:45px;">No</th><th style="width:100px;">Semester</th><th>Materi Pokok (BAB) & Tujuan Pembelajaran (TP)</th><th style="width:85px;">Alokasi</th><th style="width:150px;">Keterangan</th><th class="no-print" style="width:120px;">Aksi</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' + renderTandaTangan() + '</div>';
   };
 
   window.openProtaModal = function(id) {
     id = id || null;
     var existing = id ? appState.protaList.find(function(x) { return x.id === id; }) : null;
     var tps = getSemuaTpAktif(), pertama = ambilElemenKe(tps, 0);
-    var babAwal = existing ? getBabLabel(existing) : (pertama ? pertama.bab : 'BAB 1');
-    var materiAwal = existing ? pisahMateriTanpaBab(babAwal, existing.materiPokok) : (pertama ? pertama.materiMurni : '');
-    var def = existing || (pertama ? { tujuanPembelajaran: pertama.tp, jp: pertama.jp, keterangan: 'Semester ' + appState.context.semester } : { tujuanPembelajaran: '', jp: 4, keterangan: 'Semester ' + appState.context.semester });
-    var optHtml = tps.length ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Otomatis) --</option>' + tps.map(function(t, idx) { return '<option value="' + idx + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.tp.substring(0, 75)) + '...</option>'; }).join('') : '<option value="">(Belum ada TP di Analisis CP)</option>';
-    openModal(existing ? 'Edit Prota' : 'Tambah Prota (Pilih TP Otomatis)',
+    var def = existing || (pertama ? { bab: pertama.bab, materiPokok: pertama.materiLengkap, tujuanPembelajaran: pertama.tp, jp: pertama.jp, keterangan: 'Semester ' + appState.context.semester } : { bab: 'BAB 1', materiPokok: '', tujuanPembelajaran: '', jp: 4, keterangan: 'Semester ' + appState.context.semester });
+    var optTp = tps.length ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Semua Kolom) --</option>' + tps.map(function(t, idx) { return '<option value="' + idx + '">[' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.materiLengkap) + '</option>'; }).join('') : '<option value="">(Belum ada TP di Analisis CP)</option>';
+
+    openModal(existing ? 'Edit Prota' : 'Tambah Prota (Pilih TP / BAB & Materi)',
       '<form onsubmit="saveProta(event, \'' + (id || '') + '\')">' +
-        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;"><label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua Kolom)</label><select class="form-control" onchange="autoFillProtaFromTp(this.value)">' + optHtml + '</select></div>' +
-        '<div class="grid-2"><div class="form-group"><label class="form-label">Daftar BAB (Masuk ke Materi Pokok)</label><input type="text" id="f-pt-bab" class="form-control" list="daftar-bab-saran" value="' + escapeHtml(babAwal) + '" required /></div><div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-pt-jp" class="form-control" value="' + (def.jp || 4) + '" required /></div></div>' +
-        '<div class="form-group"><label class="form-label">Materi Pokok</label><input type="text" id="f-pt-materi" class="form-control" value="' + escapeHtml(materiAwal) + '" required /></div>' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;"><label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua)</label><select class="form-control" onchange="autoFillProtaFromTp(this.value)">' + optTp + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Pilih BAB & Materi Pokok (Dari Bank BAB & Materi)</label><select id="f-pt-materi" class="form-control" onchange="var o=this.options.item(this.selectedIndex);if(o&&o.dataset.bab){document.getElementById(\'f-pt-bab\').value=o.dataset.bab;document.getElementById(\'f-pt-jp\').value=o.dataset.jp||4;}">' + buatOpsiBankBabMateri(def.materiPokok) + '</select><input type="hidden" id="f-pt-bab" value="' + escapeHtml(def.bab || 'BAB 1') + '" /></div>' +
+        '<div class="grid-2"><div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-pt-jp" class="form-control" value="' + (def.jp || 4) + '" required /></div><div class="form-group"><label class="form-label">Keterangan</label><input type="text" id="f-pt-ket" class="form-control" value="' + escapeHtml(def.keterangan || '') + '" /></div></div>' +
         '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-pt-tp" rows="3" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran || '') + '</textarea></div>' +
-        '<div class="form-group"><label class="form-label">Keterangan</label><input type="text" id="f-pt-ket" class="form-control" value="' + escapeHtml(def.keterangan || '') + '" /></div>' +
         '<button type="submit" class="btn btn-green btn-block">Simpan Prota</button></form>'
     );
   };
@@ -5174,47 +4869,22 @@
     if (idxStr === '') return;
     var t = ambilElemenKe(getSemuaTpAktif(), parseInt(idxStr, 10));
     if (!t) return;
-    document.getElementById('f-pt-bab').value = t.bab; document.getElementById('f-pt-jp').value = t.jp; document.getElementById('f-pt-materi').value = t.materiMurni; document.getElementById('f-pt-tp').value = t.tp;
-  };
-  window.saveProta = function(e, id) {
-    e.preventDefault();
-    var ctx = appState.context, babVal = document.getElementById('f-pt-bab').value.trim(), materiVal = document.getElementById('f-pt-materi').value.trim();
-    var payload = { id: id || ('prota_' + Date.now()), kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel, bab: babVal, jp: parseInt(document.getElementById('f-pt-jp').value, 10) || 4, materiPokok: gabungBabDanMateri(babVal, materiVal), tujuanPembelajaran: document.getElementById('f-pt-tp').value.trim(), keterangan: document.getElementById('f-pt-ket').value.trim() };
-    if (id) { var idx = appState.protaList.findIndex(function(x) { return x.id === id; }); if (idx > -1) appState.protaList.splice(idx, 1, payload); } else { appState.protaList.push(payload); }
-    saveState(); closeModal(); renderCurrentMenu(); showToast('Program Tahunan disimpan!');
-  };
-
-  window.syncAllTpToProsem = function() {
-    var ctx = appState.context, tps = getSemuaTpAktif();
-    if (!tps.length) { showToast('Belum ada data TP di Analisis CP!', true); return; }
-    appState.prosemList = appState.prosemList || [];
-    var bulanDefault = ctx.semester === '1' ? 'Juli - Agustus' : 'Januari - Februari', ditambah = 0;
-    tps.forEach(function(t, i) {
-      var sudahAda = appState.prosemList.some(function(p) { return p.kelas === ctx.kelas && p.semester === ctx.semester && p.mapel === ctx.mapel && p.tujuanPembelajaran === t.tp; });
-      if (!sudahAda) {
-        appState.prosemList.push({ id: 'prosem_' + Date.now() + '_' + i, kelas: ctx.kelas, semester: ctx.semester, mapel: ctx.mapel, bab: t.bab, kodeTp: t.kodeTp, materiPokok: t.materiLengkap, tujuanPembelajaran: t.tp, jp: t.jp, bulan: bulanDefault, m1: true, m2: true, m3: false, m4: false, m5: false });
-        ditambah++;
-      }
-    });
-    saveState(); renderCurrentMenu();
-    showToast(ditambah > 0 ? ('Berhasil menambahkan ' + ditambah + ' TP ke Prosem!') : 'Semua TP sudah ada di Prosem.');
+    document.getElementById('f-pt-bab').value = t.bab; document.getElementById('f-pt-jp').value = t.jp; document.getElementById('f-pt-materi').value = t.materiLengkap; document.getElementById('f-pt-tp').value = t.tp;
   };
 
   window.openProsemModal = function(id) {
     id = id || null;
     var existing = id ? appState.prosemList.find(function(x) { return x.id === id; }) : null;
     var tps = getSemuaTpAktif(), pertama = ambilElemenKe(tps, 0), bulanDef = appState.context.semester === '1' ? 'Juli - Agustus' : 'Januari - Februari';
-    var babAwal = existing ? getBabLabel(existing) : (pertama ? pertama.bab : 'BAB 1');
-    var materiAwal = existing ? pisahMateriTanpaBab(babAwal, existing.materiPokok) : (pertama ? pertama.materiMurni : '');
-    var def = existing || (pertama ? { tujuanPembelajaran: pertama.tp, jp: pertama.jp, bulan: bulanDef } : { tujuanPembelajaran: '', jp: 4, bulan: bulanDef });
-    var optHtml = tps.length ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Otomatis) --</option>' + tps.map(function(t, idx) { return '<option value="' + idx + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.tp.substring(0, 75)) + '...</option>'; }).join('') : '<option value="">(Belum ada TP di Analisis CP)</option>';
-    openModal(existing ? 'Edit Program Semester' : 'Tambah Program Semester (Pilih TP Otomatis)',
+    var def = existing || (pertama ? { bab: pertama.bab, materiPokok: pertama.materiLengkap, tujuanPembelajaran: pertama.tp, jp: pertama.jp, bulan: bulanDef } : { bab: 'BAB 1', materiPokok: '', tujuanPembelajaran: '', jp: 4, bulan: bulanDef });
+    var optTp = tps.length ? '<option value="">-- Pilih Tujuan Pembelajaran (Isi Semua Kolom) --</option>' + tps.map(function(t, idx) { return '<option value="' + idx + '">[' + escapeHtml(t.kodeTp) + '] ' + escapeHtml(t.materiLengkap) + '</option>'; }).join('') : '<option value="">(Belum ada TP di Analisis CP)</option>';
+
+    openModal(existing ? 'Edit Program Semester' : 'Tambah Program Semester (Pilih TP / BAB & Materi)',
       '<form onsubmit="saveProsem(event, \'' + (id || '') + '\')">' +
-        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;"><label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua Kolom)</label><select class="form-control" onchange="autoFillProsemFromTp(this.value)">' + optHtml + '</select></div>' +
-        '<div class="grid-2"><div class="form-group"><label class="form-label">Daftar BAB (Masuk ke Materi Pokok)</label><input type="text" id="f-ps-bab" class="form-control" list="daftar-bab-saran" value="' + escapeHtml(babAwal) + '" required /></div><div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-ps-jp" class="form-control" value="' + (def.jp || 4) + '" required /></div></div>' +
-        '<div class="form-group"><label class="form-label">Materi Pokok / Lingkup Materi</label><input type="text" id="f-ps-materi" class="form-control" value="' + escapeHtml(materiAwal) + '" required /></div>' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;"><label class="form-label">Pilih Tujuan Pembelajaran (Otomatis Mengisi Semua)</label><select class="form-control" onchange="autoFillProsemFromTp(this.value)">' + optTp + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Pilih BAB & Materi Pokok (Dari Bank BAB & Materi)</label><select id="f-ps-materi" class="form-control" onchange="var o=this.options.item(this.selectedIndex);if(o&&o.dataset.bab){document.getElementById(\'f-ps-bab\').value=o.dataset.bab;document.getElementById(\'f-ps-jp\').value=o.dataset.jp||4;}">' + buatOpsiBankBabMateri(def.materiPokok) + '</select><input type="hidden" id="f-ps-bab" value="' + escapeHtml(def.bab || 'BAB 1') + '" /></div>' +
+        '<div class="grid-2"><div class="form-group"><label class="form-label">Alokasi Waktu (JP)</label><input type="number" min="1" id="f-ps-jp" class="form-control" value="' + (def.jp || 4) + '" required /></div><div class="form-group"><label class="form-label">Bulan Pelaksanaan</label><input type="text" id="f-ps-bulan" class="form-control" value="' + escapeHtml(def.bulan || bulanDef) + '" required /></div></div>' +
         '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-ps-tp" rows="2" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran || '') + '</textarea></div>' +
-        '<div class="form-group"><label class="form-label">Bulan Pelaksanaan</label><input type="text" id="f-ps-bulan" class="form-control" value="' + escapeHtml(def.bulan || bulanDef) + '" required /></div>' +
         '<button type="submit" class="btn btn-green btn-block">Simpan Program Semester</button></form>'
     );
   };
@@ -5223,17 +4893,31 @@
     if (idxStr === '') return;
     var t = ambilElemenKe(getSemuaTpAktif(), parseInt(idxStr, 10));
     if (!t) return;
-    document.getElementById('f-ps-bab').value = t.bab; document.getElementById('f-ps-jp').value = t.jp; document.getElementById('f-ps-materi').value = t.materiMurni; document.getElementById('f-ps-tp').value = t.tp;
+    document.getElementById('f-ps-bab').value = t.bab; document.getElementById('f-ps-jp').value = t.jp; document.getElementById('f-ps-materi').value = t.materiLengkap; document.getElementById('f-ps-tp').value = t.tp;
   };
 
-  window.saveProsem = function(e, id) {
-    e.preventDefault();
-    var existing = id ? appState.prosemList.find(function(x) { return x.id === id; }) : null;
-    var babVal = document.getElementById('f-ps-bab').value.trim(), materiVal = document.getElementById('f-ps-materi').value.trim();
-    var payload = { id: id || ('prosem_' + Date.now()), kelas: appState.context.kelas, semester: appState.context.semester, mapel: appState.context.mapel, bab: babVal, materiPokok: gabungBabDanMateri(babVal, materiVal), tujuanPembelajaran: document.getElementById('f-ps-tp').value.trim(), jp: parseInt(document.getElementById('f-ps-jp').value, 10) || 4, bulan: document.getElementById('f-ps-bulan').value.trim(), m1: existing ? existing.m1 : true, m2: existing ? existing.m2 : true, m3: existing ? existing.m3 : false, m4: existing ? existing.m4 : false, m5: existing ? existing.m5 : false };
-    if (id) { var idx = appState.prosemList.findIndex(function(x) { return x.id === id; }); if (idx > -1) appState.prosemList.splice(idx, 1, payload); } else { appState.prosemList.push(payload); }
-    saveState(); closeModal(); renderCurrentMenu(); showToast('Program Semester disimpan!');
-  };
+  // OTOMATISKAN PILIHAN BAB & MATERI DI MENU MATERI AJAR & PENYUSUNAN SOAL ASESMEN
+  document.addEventListener('focusin', function(e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    var ph = (el.placeholder || '').toLowerCase();
+    var idEl = (el.id || '').toLowerCase();
+    if ((ph.indexOf('bab') > -1 || ph.indexOf('materi') > -1 || idEl.indexOf('materi') > -1 || idEl.indexOf('bab') > -1) && !el.closest('#main-content .no-print form[onsubmit*="simpanBankBabMateri"]')) {
+      var daftar = getBankBabMateriAktif();
+      if (!daftar.length) return;
+      var dlId = 'datalist-bank-bab-materi-global';
+      var dl = document.getElementById(dlId);
+      if (!dl) {
+        dl = document.createElement('datalist');
+        dl.id = dlId;
+        document.body.appendChild(dl);
+      }
+      dl.innerHTML = daftar.map(function(it) {
+        return '<option value="' + escapeHtml(formatLabelBabMateri(it.bab, it.materi)) + '"></option>';
+      }).join('');
+      el.setAttribute('list', dlId);
+    }
+  });
 })();
 </script>
 
