@@ -4875,26 +4875,108 @@
   }, 700);
 
   // TINGGAL PILIH BAB & MATERI DI ANALISIS CP, ATP, PROTA, PROSEM
+   window.renderCheckboxMateriAnalisis = function(babTerpilih, materiSaatIni) {
+    var box = document.getElementById('box-checklist-materi-an');
+    if (!box) return;
+    var daftar = getBabBank().filter(function(it) { return it.bab === babTerpilih; });
+    var terpilihLama = String(materiSaatIni || '').split(/\s*(?:;|,|&|\bdan\b)\s*/i).map(function(s) { return s.trim().toLowerCase(); }).filter(Boolean);
+
+    if (!daftar.length) {
+      box.innerHTML = '<div style="font-size:12px;color:#64748b;">Belum ada daftar materi pada ' + escapeHtml(babTerpilih) + '. Ketik manual pada kotak di bawah:</div>';
+      return;
+    }
+
+    box.innerHTML = daftar.map(function(it, idx) {
+      var mText = String(it.materi || '').trim();
+      var cek = terpilihLama.includes(mText.toLowerCase()) || (!materiSaatIni && idx === 0);
+      return '<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:5px;cursor:pointer;font-size:13px;">' +
+        '<input type="checkbox" class="chk-an-materi-item" value="' + escapeHtml(mText) + '" ' + (cek ? 'checked' : '') + ' onchange="updateGabunganMateriAnalisis()" style="margin-top:3px;" />' +
+        '<span><strong>' + escapeHtml(mText) + '</strong></span>' +
+      '</label>';
+    }).join('');
+
+    if (!materiSaatIni) updateGabunganMateriAnalisis();
+  };
+
+  window.updateGabunganMateriAnalisis = function() {
+    var chks = Array.from(document.querySelectorAll('.chk-an-materi-item:checked')).map(function(el) { return el.value.trim(); }).filter(Boolean);
+    var inp = document.getElementById('f-an-materi-gabung');
+    if (!inp) return;
+    if (chks.length === 0) {
+      inp.value = '';
+    } else if (chks.length === 1) {
+      inp.value = chks.at(0);
+    } else if (chks.length === 2) {
+      inp.value = chks.at(0) + ' dan ' + chks.at(1);
+    } else {
+      var terakhir = chks.pop();
+      inp.value = chks.join(', ') + ', dan ' + terakhir;
+    }
+  };
+
   window.openAnalisisCPModal = function(id) {
-    id = id || null; var c = appState.context, fase = kelasToFase(c.kelas), cps = appState.cpList.filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
-    var ex = id ? appState.analisisList.find(function(x) { return x.id === id; }) : null, fCp = ex ? (cps.find(function(x) { return x.elemen === ex.elemen; }) || cps.slice(0,1).pop() || { elemen: ex.elemen, cp: ex.cpElemen }) : (cps.slice(0,1).pop() || { elemen: '', cp: '' });
+    id = id || null;
+    var c = appState.context, fase = kelasToFase(c.kelas);
+    var cps = appState.cpList.filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
+    var ex = id ? appState.analisisList.find(function(x) { return x.id === id; }) : null;
+    var fCp = ex ? (cps.find(function(x) { return x.elemen === ex.elemen; }) || cps.slice(0,1).pop() || { elemen: ex.elemen, cp: ex.cpElemen }) : (cps.slice(0,1).pop() || { elemen: '', cp: '' });
     var no = appState.analisisList.filter(function(a) { return a.kelas === c.kelas && a.semester === c.semester && a.mapel === c.mapel; }).length + 1;
-    openModal(ex ? 'Edit Analisis CP' : 'Tambah Analisis CP', '<form onsubmit="saveAnalisisCP(event,\'' + (id || '') + '\')">' +
-      '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;"><label class="form-label">Pilih BAB & Konten Materi (Dari Bank BAB & Materi)</label><select id="f-an-materi" class="form-control" onchange="var o=this.options.item(this.selectedIndex);if(o&&o.dataset.bab)document.getElementById(\'f-an-bab\').value=o.dataset.bab;" required>' + opsiBabMateriDropdown(ex ? ex.kontenMateri : '', ex ? ex.bab : '') + '</select><input type="hidden" id="f-an-bab" value="' + escapeHtml(ex ? (ex.bab || 'BAB 1') : 'BAB 1') + '" /></div>' +
-      '<div class="grid-2"><div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-an-kodetp" class="form-control" value="' + escapeHtml(ex && ex.kodeTp ? ex.kodeTp : ('TP.' + c.kelas + '.' + c.semester + '.' + no)) + '" required /></div><div class="form-group"><label class="form-label">Alokasi JP</label><input type="number" min="1" id="f-an-jp" class="form-control" value="' + (ex && ex.jp ? ex.jp : 4) + '" required /></div></div>' +
-      '<div class="form-group"><label class="form-label">Pilih CP</label><select id="f-an-cp-select" class="form-control" onchange="onSelectCPForAnalisis(this.value)">' + cps.map(function(x) { return '<option value="' + x.id + '" ' + (fCp.elemen === x.elemen ? 'selected' : '') + '>' + escapeHtml(x.elemen) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(ex ? ex.elemen : fCp.elemen) + '" readonly /></div>' +
-      '<div class="form-group"><label class="form-label">CP Elemen</label><textarea id="f-an-cp" rows="2" class="form-control" readonly>' + escapeHtml(ex ? ex.cpElemen : fCp.cp) + '</textarea></div>' +
-      '<div class="form-group"><label class="form-label">Kompetensi</label><input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(ex ? ex.kompetensi : ('Memahami ' + fCp.elemen)) + '" /></div>' +
-      '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-an-tp" rows="3" class="form-control" required>' + escapeHtml(ex ? ex.tujuanPembelajaran : '') + '</textarea></div>' +
-      '<button type="submit" class="btn btn-green btn-block">Simpan Analisis CP</button></form>');
+
+    var semuaBank = getBabBank();
+    var daftarBabUnik = [];
+    semuaBank.forEach(function(it) { if (it.bab && !daftarBabUnik.includes(it.bab)) daftarBabUnik.push(it.bab); });
+    if (!daftarBabUnik.length) daftarBabUnik.push('BAB 1');
+    var babAwal = (ex && ex.bab) ? ex.bab : daftarBabUnik.at(0);
+    if (!daftarBabUnik.includes(babAwal)) daftarBabUnik.unshift(babAwal);
+
+    var opsiBabUnik = daftarBabUnik.map(function(b) {
+      return '<option value="' + escapeHtml(b) + '" ' + (b === babAwal ? 'selected' : '') + '>' + escapeHtml(b) + '</option>';
+    }).join('');
+
+    openModal(ex ? 'Edit Analisis CP' : 'Tambah Analisis CP',
+      '<form onsubmit="saveAnalisisCP(event,\'' + (id || '') + '\')">' +
+        '<div class="grid-2">' +
+          '<div class="form-group"><label class="form-label">Pilih BAB</label><select id="f-an-bab" class="form-control" onchange="renderCheckboxMateriAnalisis(this.value, \'\')">' + opsiBabUnik + '</select></div>' +
+          '<div class="form-group"><label class="form-label">Kode TP & Alokasi JP</label><div style="display:flex;gap:6px;"><input type="text" id="f-an-kodetp" class="form-control" value="' + escapeHtml(ex && ex.kodeTp ? ex.kodeTp : ('TP.' + c.kelas + '.' + c.semester + '.' + no)) + '" required /><input type="number" min="1" id="f-an-jp" class="form-control" style="width:75px;" value="' + (ex && ex.jp ? ex.jp : 4) + '" required /></div></div>' +
+        '</div>' +
+        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
+          '<label class="form-label">Centang Konten Materi dari BAB Ini (Bisa Pilih 1 atau Gabung Beberapa Materi)</label>' +
+          '<div id="box-checklist-materi-an" style="max-height:140px;overflow-y:auto;margin-bottom:8px;"></div>' +
+          '<label class="form-label" style="font-size:11px;color:#14532d;">Hasil Gabungan Konten Materi (Otomatis Terisi, Bisa Diedit):</label>' +
+          '<input type="text" id="f-an-materi-gabung" class="form-control" value="' + escapeHtml(ex ? ex.kontenMateri : '') + '" required />' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Pilih CP</label><select id="f-an-cp-select" class="form-control" onchange="onSelectCPForAnalisis(this.value)">' + cps.map(function(x) { return '<option value="' + x.id + '" ' + (fCp.elemen === x.elemen ? 'selected' : '') + '>' + escapeHtml(x.elemen) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(ex ? ex.elemen : fCp.elemen) + '" readonly /></div>' +
+        '<div class="form-group"><label class="form-label">CP Elemen</label><textarea id="f-an-cp" rows="2" class="form-control" readonly>' + escapeHtml(ex ? ex.cpElemen : fCp.cp) + '</textarea></div>' +
+        '<div class="form-group"><label class="form-label">Kompetensi</label><input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(ex ? ex.kompetensi : ('Memahami ' + fCp.elemen)) + '" /></div>' +
+        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-an-tp" rows="3" class="form-control" required>' + escapeHtml(ex ? ex.tujuanPembelajaran : '') + '</textarea></div>' +
+        '<button type="submit" class="btn btn-green btn-block">Simpan Analisis CP</button>' +
+      '</form>'
+    );
+    setTimeout(function() { renderCheckboxMateriAnalisis(babAwal, ex ? ex.kontenMateri : ''); }, 20);
   };
 
   window.saveAnalisisCP = function(e, id) {
-    e.preventDefault(); var c = appState.context, sel = document.getElementById('f-an-materi'), opt = sel.options.item(sel.selectedIndex);
-    var bab = (opt && opt.dataset.bab) ? opt.dataset.bab : document.getElementById('f-an-bab').value;
-    var p = { id: id || ('an_' + Date.now()), kelas: c.kelas, semester: c.semester, mapel: c.mapel, bab: bab, kodeTp: document.getElementById('f-an-kodetp').value.trim(), jp: parseInt(document.getElementById('f-an-jp').value, 10) || 4, elemen: document.getElementById('f-an-elemen').value.trim(), cpElemen: document.getElementById('f-an-cp').value.trim(), kompetensi: document.getElementById('f-an-komp').value.trim(), kontenMateri: sel.value.trim(), tujuanPembelajaran: document.getElementById('f-an-tp').value.trim() };
-    if (id) { var idx = appState.analisisList.findIndex(function(x) { return x.id === id; }); if (idx > -1) appState.analisisList.splice(idx, 1, p); } else { appState.analisisList.push(p); }
+    e.preventDefault();
+    var c = appState.context;
+    var bab = document.getElementById('f-an-bab').value.trim();
+    var matGabung = document.getElementById('f-an-materi-gabung').value.trim();
+    var p = {
+      id: id || ('an_' + Date.now()), kelas: c.kelas, semester: c.semester, mapel: c.mapel,
+      bab: bab, kodeTp: document.getElementById('f-an-kodetp').value.trim(),
+      jp: parseInt(document.getElementById('f-an-jp').value, 10) || 4,
+      elemen: document.getElementById('f-an-elemen').value.trim(),
+      cpElemen: document.getElementById('f-an-cp').value.trim(),
+      kompetensi: document.getElementById('f-an-komp').value.trim(),
+      kontenMateri: matGabung,
+      tujuanPembelajaran: document.getElementById('f-an-tp').value.trim()
+    };
+    if (id) {
+      var idx = appState.analisisList.findIndex(function(x) { return x.id === id; });
+      if (idx > -1) appState.analisisList.splice(idx, 1, p);
+    } else {
+      appState.analisisList.push(p);
+    }
     saveState(); closeModal(); renderCurrentMenu(); showToast('Analisis CP disimpan!');
   };
 
