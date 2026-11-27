@@ -5172,8 +5172,8 @@ window.openAnalisisCPModal = function(id) {
     var matGabung = document.getElementById('f-an-materi-gabung').value.trim();
     var p = {
       id: id || ('an_' + Date.now()), kelas: c.kelas, semester: c.semester, mapel: c.mapel,
-      bab: bab, kodeTp: document.getElementById('f-an-kodetp').value.trim(),
-      jp: parseInt(document.getElementById('f-an-jp').value, 10) || 4,
+     bab: bab, kodeTp: ((document.getElementById('f-an-kodetp') || document.querySelector('#modal-body input[type="text"]') || {value:''}).value || '').trim(),
+jp: parseInt(((document.getElementById('f-an-jp') || document.querySelector('#modal-body input[type="number"]') || {value:4}).value), 10) || 4,
       elemen: document.getElementById('f-an-elemen').value.trim(),
       cpElemen: document.getElementById('f-an-cp').value.trim(),
       kompetensi: document.getElementById('f-an-komp').value.trim(),
