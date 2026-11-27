@@ -2737,7 +2737,7 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
           <thead>
             <tr>
               <th style="width:45px;">No</th>
-              <th style="width:95px;">Kelas / Sem</th>
+             
               <th style="width:140px;">Elemen</th>
               <th>CP Elemen</th>
               <th style="width:160px;">Kompetensi</th>
@@ -2750,7 +2750,7 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
             ${list.length ? list.map((item, idx) => `
               <tr>
                 <td>${idx + 1}</td>
-                <td><strong>Kelas ${escapeHtml(item.kelas)}</strong><br><small>Sem ${escapeHtml(item.semester)}</small></td>
+               
                 <td><strong>${escapeHtml(item.elemen)}</strong></td>
                 <td>${escapeHtml(item.cpElemen)}</td>
                 <td>${escapeHtml(item.kompetensi)}</td>
@@ -2761,7 +2761,7 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
                   <button type="button" class="btn btn-pink btn-sm" onclick="deleteAnalisisCP('${item.id}')">Hapus</button>
                 </td>
               </tr>
-            `).join('') : `<tr><td colspan="8" style="text-align:center;">Belum ada analisis CP pada ${escapeHtml(fase)} (Semester 1 &amp; 2). Klik "+ Tambah Analisis CP".</td></tr>`}
+            `).join('') : `<tr><td colspan="7" style="text-align:center;">Belum ada analisis CP pada ${escapeHtml(fase)} (Semester 1 &amp; 2). Klik "+ Tambah Analisis CP".</td></tr>`}
           </tbody>
         </table>
       </div>
