@@ -5904,22 +5904,25 @@ window.prosesPdfBukuSiswa = async function(input) {
   var file = input && input.files && input.files.item(0);
   if (!file) return;
   var st = document.getElementById('status-pdf-buku');
-  if (st) st.textContent = '⏳ Sedang membaca seluruh halaman PDF Buku Siswa, mohon tunggu...';
+  if (st) st.textContent = '⏳ Sedang membaca seluruh halaman PDF Buku Siswa (' + file.name + '), mohon tunggu...';
   try {
     if (!window.pdfjsLib) {
       await new Promise(function(resolve, reject) {
         var s = document.createElement('script');
         s.src = 'https://cloudflare.com';
         s.onload = resolve;
-        s.onerror = reject;
+        s.onerror = function() { reject(new Error('Gagal memuat pustaka pembaca PDF. Periksa koneksi internet.')); };
         document.head.appendChild(s);
       });
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
     }
     var buf = await file.arrayBuffer();
-    var pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    var loadingTask = window.pdfjsLib.getDocument({ data: new Uint8Array(buf), disableWorker: true });
+    var pdf = await loadingTask.promise;
     var semuaTeks = '';
     for (var p = 1; p <= pdf.numPages; p++) {
+      if (st && p % 15 === 0) {
+        st.textContent = '⏳ Membaca halaman ' + p + ' dari ' + pdf.numPages + ' halaman...';
+      }
       var page = await pdf.getPage(p);
       var tc = await page.getTextContent();
       var baris = tc.items.map(function(it) { return it.str; }).join(' ');
@@ -5937,19 +5940,21 @@ window.prosesPdfBukuSiswa = async function(input) {
         var m = seg.match(/^\b(BAB\s+(?:[1-9]|1[0-5]|[IVX]+))\b/i);
         if (m) {
           var namaBab = m.at(1).toUpperCase().replace(/\s+/g, ' ');
-          perBab[namaBab] = (perBab[namaBab] ? perBab[namaBab] + '\n\n' : '') + seg.slice(0, 2200).trim();
+          if (!perBab[namaBab] || seg.length > perBab[namaBab].length) {
+            perBab[namaBab] = seg.slice(0, 1800).trim();
+          }
         }
       });
     } else {
-      perBab['BAB 1'] = bersih.slice(0, 2500);
+      perBab['BAB 1'] = bersih.slice(0, 2000);
     }
     if (!appState.bukuPdfData) appState.bukuPdfData = {};
     var key = String(appState.context.kelas || '').trim() + '_' + String(appState.context.mapel || '').trim();
-    appState.bukuPdfData[key] = { namaFile: file.name, perBab: perBab, semuaTeks: bersih.slice(0, 12000) };
+    appState.bukuPdfData[key] = { namaFile: file.name, perBab: perBab };
     if (typeof saveState === 'function') saveState();
     if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
   } catch (err) {
-    if (st) st.textContent = '❌ Gagal membaca PDF: ' + (err && err.message ? err.message : 'Pastikan file PDF valid.');
+    if (st) st.textContent = '❌ Gagal membaca PDF: ' + (err && err.message ? err.message : String(err));
   }
 };
 
