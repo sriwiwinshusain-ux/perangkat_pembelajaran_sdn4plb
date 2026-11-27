@@ -2964,8 +2964,8 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
       e.preventDefault();
       const payload = {
         id: id || 'atp_' + Date.now(),
-        kelas: appState.context.kelas,
-        semester: appState.context.semester,
+        kelas: (function() { var p = (document.getElementById('f-atp-kode')?.value || '').trim().split('.'); return (p.length >= 3 && /^[1-6]$/.test(p.at(1))) ? p.at(1) : appState.context.kelas; })(),
+ semester: (function() { var p = (document.getElementById('f-atp-kode')?.value || '').trim().split('.'); return (p.length >= 3 && /^$/.test(p.at(2))) ? p.at(2) : appState.context.semester; })(),
         mapel: appState.context.mapel,
             bab: (document.getElementById('f-atp-bab') ? document.getElementById('f-atp-bab').value.trim() : ''),
     elemen: (document.getElementById('f-atp-elemen') ? document.getElementById('f-atp-elemen').value.trim() : ''),
@@ -5542,12 +5542,19 @@ window.onPilihKodeTpATP = function(sel) {
     var jpStr = String(t.jp).trim();
     elWaktu.value = /jp/i.test(jpStr) ? jpStr : (jpStr + ' JP');
   }
-  if (t.kelas) appState.context.kelas = t.kelas;
-  if (t.semester) appState.context.semester = t.semester;
-  if (typeof showToast === 'function') {
-    showToast('BAB, Materi, dan TP otomatis terisi dari Analisis CP!');
+  var parts = String(t.kode || '').trim().split('.');
+    if (parts.length >= 3 && /^[1-6]$/.test(parts.at(1)) && /^[12]$/.test(parts.at(2))) {
+    appState.context.kelas = String(parts.at(1));
+    appState.context.semester = String(parts.at(2));
+    var selKls = document.getElementById('ctx-kelas');
+    var selSem = document.getElementById('ctx-semester');
+    if (selKls) selKls.value = String(parts.at(1));
+    if (selSem) selSem.value = String(parts.at(2));
+
   }
-};
+  if (typeof showToast === 'function') {
+    showToast('Otomatis masuk ke Kelas ' + appState.context.kelas + ' Semester ' + appState.context.semester + '!');
+  }
 
 window.openATPModal = function(id) {
   id = id || null;
