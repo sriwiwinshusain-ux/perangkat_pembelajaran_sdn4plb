@@ -5075,15 +5075,31 @@
   }
   if (!cpCocok) cpCocok = cps.at(0);
 
-  if (cpCocok) {
+    if (cpCocok) {
     if (elElemen) elElemen.value = cpCocok.elemen || '';
     if (elCp) elCp.value = cpCocok.cp || '';
     if (elKomp) {
       var mKomp = String(cpCocok.cp || '').match(/(menjelaskan|mengidentifikasi|menganalisis|mempraktikkan|menerapkan|mengenal|memahami|mengeksplorasi|menciptakan|merefleksikan|mengapresiasi|menggambar|membuat|menyajikan)/i);
       elKomp.value = mKomp ? (mKomp.at(0).charAt(0).toUpperCase() + mKomp.at(0).slice(1).toLowerCase()) : ('Memahami ' + (cpCocok.elemen || ''));
     }
+    var elKode = document.getElementById('f-an-kode');
+    if (elKode && elKode.dataset.isEdit !== '1') {
+      var kelasAngka = String(c.kelas || '5').replace(/[^0-9]/g, '') || '5';
+      var elLow = String(cpCocok.elemen || '').trim().toLowerCase();
+      var idxCp = cps.findIndex(function(x) { return String(x.elemen || '').trim().toLowerCase() === elLow; });
+      var nomorElemen = idxCp >= 0 ? (idxCp + 1) : 1;
+      var daftarExisting = (appState.analisisList || []).filter(function(a) {
+        return String(a.kelas) === String(c.kelas) &&
+          String(a.semester) === String(c.semester) &&
+          a.mapel === c.mapel &&
+          String(a.elemen || '').trim().toLowerCase() === elLow;
+      });
+      var nomorUrut = daftarExisting.length + 1;
+      elKode.value = fase + '.' + kelasAngka + '.' + nomorElemen + '.' + nomorUrut;
+    }
   }
 };
+
 
 window.openAnalisisCPModal = function(id) {
   id = id || null;
@@ -5108,7 +5124,8 @@ window.openAnalisisCPModal = function(id) {
     '<form onsubmit="saveAnalisisCP(event,\'' + (id || '') + '\')">' +
       '<div class="grid-2">' +
         '<div class="form-group"><label class="form-label">Pilih BAB</label><select id="f-an-bab" class="form-control" onchange="renderCheckboxMateriAnalisis(this.value, \'\'); isiOtomatisCpDariBabMateri(); updateGabunganMateriAnalisis(true);">' + opsiBabUnik + '</select></div>' +
-        '<div class="form-group"><label class="form-label">Kode TP & Alokasi JP</label><div style="display:flex;gap:6px;"><input type="text" id="f-an-kode" class="form-control" value="' + escapeHtml(ex ? ex.kode : ('TP.' + no)) + '"><input type="number" id="f-an-jp" class="form-control" value="' + (ex ? ex.jp : 4) + '" style="width:75px;"></div></div>' +
+              '<div class="form-group"><label class="form-label">Kode TP & Alokasi JP</label><div style="display:flex;gap:6px;"><input type="text" id="f-an-kode" data-is-edit="' + (ex ? '1' : '0') + '" class="form-control" value="' + escapeHtml(ex ? ex.kode : ('TP.' + no)) + '"><input type="number" id="f-an-jp" class="form-control" value="' + (ex ? ex.jp : 4) + '" style="width:75px;"></div></div>' +
+
       '</div>' +
       '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #bbf7d0;" onchange="isiOtomatisCpDariBabMateri(); updateGabunganMateriAnalisis(true);">' +
         '<label class="form-label">Centang Konten Materi dari BAB Ini (Bisa Pilih 1 atau Gabung Beberapa Materi)</label>' +
