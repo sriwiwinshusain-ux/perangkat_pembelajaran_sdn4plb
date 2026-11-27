@@ -4443,13 +4443,21 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
         }
         return `
           <div style="background:#fefce8;border:1px solid #eab308;padding:8px 12px;margin-bottom:8px;border-radius:8px;display:flex;align-items:center;gap:12px;">
-            <svg width="64" height="46" viewBox="0 0 64 46" style="flex-shrink:0;">
-              <rect x="2" y="2" width="60" height="42" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-              <circle cx="20" cy="18" r="6" fill="#eab308"/>
-              <path d="M12 36 C12 28, 28 28, 28 36" fill="#15803d"/>
-              <circle cx="44" cy="18" r="6" fill="#db2777"/>
-              <path d="M36 36 C36 28, 52 28, 52 36" fill="#78350f"/>
-            </svg>
+                  <svg width="150" height="95" viewBox="0 0 150 95" style="flex-shrink:0;border-radius:8px;border:1.5px solid #cbd5e1;background:#e0f2fe;">
+        <rect x="0" y="68" width="150" height="27" fill="#fef3c7"/>
+        <rect x="42" y="8" width="66" height="32" rx="3" fill="#166534" stroke="#854d0e" stroke-width="2.5"/>
+        <line x1="50" y1="18" x2="98" y2="18" stroke="#bbf7d0" stroke-width="2" stroke-linecap="round"/>
+        <line x1="50" y1="26" x2="86" y2="26" stroke="#fde047" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="36" cy="44" r="10" fill="#fed7aa" stroke="#9a3412" stroke-width="1.2"/>
+        <path d="M26 42 C26 32, 46 32, 46 42 C43 37, 29 37, 26 42 Z" fill="#1e293b"/>
+        <path d="M22 72 C22 57, 50 57, 50 72 Z" fill="#2563eb"/>
+        <circle cx="114" cy="44" r="10" fill="#fed7aa" stroke="#9a3412" stroke-width="1.2"/>
+        <path d="M103 44 C103 31, 125 31, 125 44 L127 52 L122 50 L121 41 L107 41 L106 50 L101 52 Z" fill="#1e293b"/>
+        <path d="M100 72 C100 57, 128 57, 128 72 Z" fill="#dc2626"/>
+        <rect x="18" y="68" width="114" height="7" rx="2" fill="#b45309"/>
+        <polygon points="58,68 75,63 75,68" fill="#ffffff" stroke="#64748b" stroke-width="1"/>
+        <polygon points="92,68 75,63 75,68" fill="#ffffff" stroke="#64748b" stroke-width="1"/>
+      </svg>
                  <div style="font-size:12.5px;">
         <strong>${(cfg.kesulitan || 'mudah') === 'mudah' ? 'Ayo perhatikan gambar berikut!' : (cfg.kesulitan === 'sedang' ? 'Perhatikan cerita singkat berikut!' : 'Bacalah kasus berikut dengan teliti!')}</strong><br>
         ${(cfg.kesulitan || 'mudah') === 'mudah'
@@ -4480,7 +4488,7 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
           naskahHtml += `
             <div style="margin-bottom:14px;font-size:13px;">
               ${makeStimulus(no, topicClean)}
-                    <div style="font-weight:700;margin-bottom:4px;">${no}. ${(cfg.kesulitan || 'mudah') === 'mudah' ? 'Berdasarkan gambar di atas, sikap baik yang harus kita lakukan adalah ...' : (cfg.kesulitan === 'sedang' ? 'Berdasarkan cerita di atas, tindakan yang tepat saat belajar bersama teman adalah ...' : 'Berdasarkan masalah pada bacaan di atas, langkah pemecahan yang paling tepat adalah ...')}</div>
+        <div style="font-weight:700;margin-bottom:4px;">${no}. ${(no % 2 === 1) ? ((cfg.kesulitan || 'mudah') === 'mudah' ? 'Berdasarkan gambar di atas, sikap baik yang harus kita lakukan adalah ...' : (cfg.kesulitan === 'sedang' ? 'Berdasarkan gambar dan cerita di atas, tindakan yang tepat saat belajar bersama teman adalah ...' : 'Berdasarkan gambar kasus di atas, langkah pemecahan yang paling tepat adalah ...')) : 'Berdasarkan bacaan di atas, sikap dan tindakan yang paling tepat untuk dilakukan adalah ...'}</div>
         <div style="padding-left:18px;">
           A. Memahami materi dengan sungguh-sungguh dan mengerjakannya dengan baik<br>
           B. Bermain sendiri dan tidak mau mendengarkan penjelasan guru<br>
