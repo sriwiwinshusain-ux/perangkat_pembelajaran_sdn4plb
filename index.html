@@ -5179,7 +5179,8 @@ window.openAnalisisCPModal = function(id) {
       kompetensi: document.getElementById('f-an-komp').value.trim(),
       kontenMateri: matGabung,
       tujuanPembelajaran: document.getElementById('f-an-tp').value.trim()
-    };
+    };  if (!Array.isArray(appState.analisisList)) appState.analisisList = [];
+
     if (id) {
       var idx = appState.analisisList.findIndex(function(x) { return x.id === id; });
       if (idx > -1) appState.analisisList.splice(idx, 1, p);
@@ -5356,7 +5357,39 @@ window.openAnalisisCPModal = function(id) {
           elBab.innerHTML = '<option value="">-- Belum ada BAB di Bank BAB (' + faseAktif + ') --</option>';
         }
 
-        var renderCeklisMateriDariBank = function(babDipilih, materiTersimpan) {
+                var renderCeklisMateriDariBank = function(babDipilih, materiTersimpan) {
+          var box = document.getElementById('box-checklist-materi-an');
+          var materiList = semuaBabFase.filter(function(b) { return b.bab === babDipilih; });
+          if (!box) return;
+          if (!materiList.length) {
+            box.innerHTML = '<div style="font-size:12px;color:#64748b;">Belum ada daftar materi pada BAB ini. Ketik manual pada kotak di bawah:</div>';
+            return;
+          }
+          var tercentang = String(materiTersimpan || '').split(/[,;\n]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+          box.innerHTML = materiList.map(function(m, idx) {
+            var teks = String(m.materi || '').trim();
+            var checked = !ex ? (idx === 0) : (tercentang.indexOf(teks) > -1);
+            return '<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:#fff;border:1px solid #bbf7d0;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px;">' +
+              '<input type="checkbox" class="chk-materi-an" value="' + escapeHtml(teks) + '"' + (checked ? ' checked' : '') + ' onchange="syncCeklisKeGabungan()">' +
+              '<span><strong>[Kelas ' + escapeHtml(String(m.kelas)) + ' • Sem ' + escapeHtml(String(m.semester)) + ']</strong> ' + escapeHtml(teks) + '</span>' +
+            '</label>';
+          }).join('');
+          window.syncCeklisKeGabungan();
+        };
+
+        window.syncCeklisKeGabungan = function() {
+          var box = document.getElementById('box-checklist-materi-an');
+          var inpGabung = document.getElementById('f-an-materi-gabung');
+          if (!box || !inpGabung) return;
+          var dipilih = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(function(cb) { return cb.value.trim(); })
+            .filter(Boolean);
+          if (dipilih.length) {
+            inpGabung.value = dipilih.join(', ');
+          }
+          if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
+        };
+
           var box = document.getElementById('box-ceklis-materi-analisis') || document.getElementById('an-materi-checklist');
           var materiList = semuaBabFase.filter(function(b) { return b.bab === babDipilih; });
           if (!box) {
