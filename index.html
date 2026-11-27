@@ -5260,75 +5260,16 @@ window.openAnalisisCPModal = function(id) {
           elBab.innerHTML = '<option value="">-- Belum ada BAB di Bank BAB (' + faseAktif + ') --</option>';
         }
 
-        if (!document.getElementById('f-an-materi-select')) {
-          var parentGroup = elBab.closest('.form-group');
-          if (parentGroup && parentGroup.parentNode) {
-            var wrapMateri = document.createElement('div');
-            wrapMateri.className = 'form-group';
-            wrapMateri.innerHTML =
-              '<label class="form-label">Pilih Materi / Topik Pembelajaran</label>' +
-              '<select id="f-an-materi-select" class="form-control"><option value="">-- Pilih Materi --</option></select>';
-            parentGroup.parentNode.insertBefore(wrapMateri, parentGroup.nextSibling);
-
-            var selMateri = document.getElementById('f-an-materi-select');
-            selMateri.onchange = function() {
-              var valMat = selMateri.value;
-              var elGab = document.getElementById('f-an-konten');
-              if (elGab) {
-                elGab.value = valMat;
-                elGab.dispatchEvent(new Event('input'));
-              }
-              if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
-            };
-          }
-        }
-
         var syncBabKeContext = function() {
           var babDipilih = elBab.value;
-          var cocokList = semuaBabFase.filter(function(b) { return b.bab === babDipilih; });
-          if (cocokList.length) {
-            appState.context.kelas = String(cocokList.at(0).kelas);
-            appState.context.semester = String(cocokList.at(0).semester);
+          var cocok = semuaBabFase.find(function(b) { return b.bab === babDipilih; });
+          if (cocok) {
+            appState.context.kelas = String(cocok.kelas);
+            appState.context.semester = String(cocok.semester);
           }
-
-          var selMat = document.getElementById('f-an-materi-select');
-          if (selMat) {
-            var daftarMateri = [];
-            cocokList.forEach(function(b) {
-              var raw = b.materiList || b.materi || b.subMateri || b.topik || '';
-              if (Array.isArray(raw)) {
-                raw.forEach(function(m) {
-                  var teks = typeof m === 'object' ? (m.materi || m.nama || m.judul || '') : String(m || '');
-                  if (teks.trim() && daftarMateri.indexOf(teks.trim()) === -1) daftarMateri.push(teks.trim());
-                });
-              } else if (typeof raw === 'string' && raw.trim()) {
-                raw.split(/\n|;|,/).forEach(function(m) {
-                  if (m.trim() && daftarMateri.indexOf(m.trim()) === -1) daftarMateri.push(m.trim());
-                });
-              }
-            });
-
-            if (daftarMateri.length) {
-              var curMat = ex ? String(ex.kontenMateri || '') : '';
-              selMat.innerHTML = daftarMateri.map(function(m) {
-                return '<option value="' + m.replace(/"/g, '&quot;') + '"' + (m === curMat ? ' selected' : '') + '>' + m + '</option>';
-              }).join('');
-              if (!curMat) selMat.value = daftarMateri.at(0);
-            } else {
-              selMat.innerHTML = '<option value="">-- Belum ada materi pada ' + (babDipilih || 'BAB ini') + ' --</option>';
-            }
-          }
-
           if (typeof renderCheckboxMateriAnalisis === 'function') renderCheckboxMateriAnalisis(babDipilih, ex ? ex.kontenMateri : '');
           if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
           if (typeof updateGabunganMateriAnalisis === 'function') updateGabunganMateriAnalisis(!ex);
-
-          var selMat2 = document.getElementById('f-an-materi-select');
-          var elGab2 = document.getElementById('f-an-konten');
-          if (selMat2 && selMat2.value && elGab2) {
-            elGab2.value = selMat2.value;
-            elGab2.dispatchEvent(new Event('input'));
-          }
         };
 
         elBab.onchange = syncBabKeContext;
@@ -5337,92 +5278,115 @@ window.openAnalisisCPModal = function(id) {
     }
   };
 })();
-window.getTpsGlobal = function(i) { return i === '' ? null : (getTps().slice(parseInt(i,10), parseInt(i,10)+1).pop() || null); };
+window.getTpsFase = function() {
+  var faseAktif = appState.context.fase || (typeof kelasToFase === 'function' ? kelasToFase(appState.context.kelas || '5') : 'Fase C');
+  var mapelAktif = appState.context.mapel;
+  var list = (appState.analisisList || []).filter(function(a) {
+    var fItem = typeof kelasToFase === 'function' ? kelasToFase(a.kelas) : faseAktif;
+    return fItem === faseAktif && a.mapel === mapelAktif;
+  });
+  var hasil = [];
+  list.forEach(function(a) {
+    var rawTp = String(a.tujuanPembelajaran || a.tp || '').trim();
+    var barisTp = rawTp ? rawTp.split(/\r?\n+/).map(function(s) { return s.trim(); }).filter(Boolean) : [''];
+    barisTp.forEach(function(teksTp, idx) {
+      var kode = a.kodeTp || a.kode || ('TP.' + a.kelas + '.' + (a.semester || '1') + '.' + (idx + 1));
+      var mKode = teksTp.match(/^([A-Za-z0-9._-]+)\s*[:\-]\s*(.+)$/);
+      if (mKode && /tp/i.test(mKode[1])) {
+        kode = mKode[1];
+        teksTp = mKode[2].trim();
+      }
+      hasil.push({
+        kode: kode,
+        bab: a.bab || '',
+        materi: a.kontenMateri || a.materi || '',
+        elemen: a.elemen || '',
+        tp: teksTp,
+        jp: a.alokasiWaktu || a.jp || '4 JP',
+        kelas: String(a.kelas || ''),
+        semester: String(a.semester || '1')
+      });
+    });
+  });
+  return hasil;
+};
 
-   window.onPilihBabMateriATP = function(sel) {
-  var opt = sel.options[sel.selectedIndex];
-  var babDipilih = (opt && opt.dataset && opt.dataset.bab) ? opt.dataset.bab.trim() : '';
-  var materiDipilih = String(sel.value || '').trim();
-  if (!materiDipilih) return;
+window.getTpsGlobal = function(i) {
+  if (i === '' || i === null || typeof i === 'undefined') return null;
+  var list = window.getTpsFase();
+  return list[parseInt(i, 10)] || null;
+};
 
-  var mLow = materiDipilih.toLowerCase();
-  var bLow = babDipilih.toLowerCase();
-  var tps = getTps() || [];
+window.onPilihKodeTpATP = function(sel) {
+  var t = window.getTpsGlobal(sel.value);
+  if (!t) return;
+  var elBab = document.getElementById('f-atp-bab');
+  var elMateri = document.getElementById('f-atp-materi');
+  var elKode = document.getElementById('f-atp-kode');
+  var elElemen = document.getElementById('f-atp-elemen');
+  var elTp = document.getElementById('f-atp-tp');
+  var elWaktu = document.getElementById('f-atp-waktu');
 
-  var cocok = tps.find(function(t) {
-    var tm = String(t.materi || '').trim().toLowerCase();
-    var tb = String(t.bab || '').trim().toLowerCase();
-    return tm === mLow && (!bLow || tb === bLow);
-  }) || tps.find(function(t) {
-    var tm = String(t.materi || '').trim().toLowerCase();
-    var tb = String(t.bab || '').trim().toLowerCase();
-    var babCocok = !bLow || tb === bLow || tb.indexOf(bLow) > -1 || bLow.indexOf(tb) > -1;
-    return babCocok && tm && (tm.indexOf(mLow) > -1 || mLow.indexOf(tm) > -1);
-  }) || tps.find(function(t) {
-    var tm = String(t.materi || '').trim().toLowerCase();
-    return tm && (tm.indexOf(mLow) > -1 || mLow.indexOf(tm) > -1);
-  }) || (bLow ? tps.find(function(t) {
-    var tb = String(t.bab || '').trim().toLowerCase();
-    return tb === bLow;
-  }) : null);
-
-  if (cocok) {
-    var elKode = document.getElementById('f-atp-kode');
-    var elElemen = document.getElementById('f-atp-elemen');
-    var elTp = document.getElementById('f-atp-tp');
-    var elWaktu = document.getElementById('f-atp-waktu');
-
-    if (elKode && cocok.kode) elKode.value = cocok.kode;
-    if (elElemen && cocok.elemen) elElemen.value = cocok.elemen;
-    if (elTp && cocok.tp) elTp.value = cocok.tp;
-    if (elWaktu && cocok.jp) {
-      var jpStr = String(cocok.jp).trim();
-      elWaktu.value = /jp/i.test(jpStr) ? jpStr : (jpStr + ' JP');
-    }
-    if (typeof showToast === 'function') {
-      showToast('Tujuan Pembelajaran (TP) otomatis terisi dari Analisis CP!');
-    }
+  if (elBab) elBab.value = t.bab;
+  if (elMateri) elMateri.value = t.materi;
+  if (elKode) elKode.value = t.kode;
+  if (elElemen) elElemen.value = t.elemen;
+  if (elTp) elTp.value = t.tp;
+  if (elWaktu && t.jp) {
+    var jpStr = String(t.jp).trim();
+    elWaktu.value = /jp/i.test(jpStr) ? jpStr : (jpStr + ' JP');
+  }
+  if (t.kelas) appState.context.kelas = t.kelas;
+  if (t.semester) appState.context.semester = t.semester;
+  if (typeof showToast === 'function') {
+    showToast('BAB, Materi, dan TP otomatis terisi dari Analisis CP!');
   }
 };
 
-  window.openATPModal = function(id) {
-    id = id || null;
-    var ex = id ? appState.atpList.find(function(x) { return x.id === id; }) : null;
-    var tps = getTps(), p0 = tps.slice(0, 1).pop();
-    var def = ex || (p0
-      ? { bab: p0.bab, kodeTp: p0.kode, elemen: p0.elemen, lingkupMateri: p0.materi, tujuanPembelajaran: p0.tp, alokasiWaktu: p0.jp + ' JP' }
-      : { bab: 'BAB 1', kodeTp: 'TP.1', elemen: '', lingkupMateri: '', tujuanPembelajaran: '', alokasiWaktu: '4 JP' });
+window.openATPModal = function(id) {
+  id = id || null;
+  var ex = id ? appState.atpList.find(function(x) { return x.id === id; }) : null;
+  var tps = window.getTpsFase();
+  var p0 = tps.length ? tps[0] : null;
+  var def = ex || (p0
+    ? { bab: p0.bab, kodeTp: p0.kode, elemen: p0.elemen, lingkupMateri: p0.materi, tujuanPembelajaran: p0.tp, alokasiWaktu: p0.jp }
+    : { bab: '', kodeTp: 'TP.5.1.1', elemen: '', lingkupMateri: '', tujuanPembelajaran: '', alokasiWaktu: '4 JP' });
 
-    var optTp = tps.length
-      ? '<option value="">-- Atau Pilih Langsung Berdasarkan Kode TP --</option>' + tps.map(function(t, i) {
-          return '<option value="' + i + '">[' + escapeHtml(t.bab) + ' • ' + escapeHtml(t.kode) + '] ' + escapeHtml(t.materi) + '</option>';
-        }).join('')
-      : '<option value="">(Belum ada TP di Analisis CP)</option>';
+  var selectedIdx = '';
+  if (tps.length) {
+    var cariIdx = tps.findIndex(function(t) {
+      return (def.kodeTp && t.kode === def.kodeTp) || (def.tujuanPembelajaran && t.tp === def.tujuanPembelajaran);
+    });
+    if (cariIdx > -1) selectedIdx = String(cariIdx);
+  }
 
-    openModal(ex ? 'Edit ATP' : 'Tambah ATP',
-      '<form onsubmit="saveATP(event,\'' + (id || '') + '\')">' +
-        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
-          '<label class="form-label">Pilih BAB & Lingkup Materi (Otomatis Mengisi TP, Kode TP & Elemen)</label>' +
-          '<select id="f-atp-materi" class="form-control" onchange="onPilihBabMateriATP(this)" required>' +
-            opsiBabMateriDropdown(def.lingkupMateri, def.bab) +
-          '</select>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label" style="font-size:11px;color:#475569;">Pilihan Alternatif Berdasarkan Kode TP (Jika dalam 1 Materi Ada Beberapa TP):</label>' +
-          '<select class="form-control" onchange="var t=getTpsGlobal(this.value);if(t){document.getElementById(\'f-atp-kode\').value=t.kode;document.getElementById(\'f-atp-elemen\').value=t.elemen;document.getElementById(\'f-atp-materi\').value=t.materi;document.getElementById(\'f-atp-tp\').value=t.tp;document.getElementById(\'f-atp-waktu\').value=t.jp+\' JP\';}">' +
-            optTp +
-          '</select>' +
-        '</div>' +
-        '<div class="grid-2">' +
-          '<div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-atp-kode" class="form-control" value="' + escapeHtml(def.kodeTp) + '" required /></div>' +
-          '<div class="form-group"><label class="form-label">Waktu</label><input type="text" id="f-atp-waktu" class="form-control" value="' + escapeHtml(def.alokasiWaktu) + '" required /></div>' +
-        '</div>' +
-        '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-atp-elemen" class="form-control" value="' + escapeHtml(def.elemen) + '" required /></div>' +
-        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP) (Otomatis Terisi)</label><textarea id="f-atp-tp" rows="3" class="form-control" required>' + escapeHtml(def.tujuanPembelajaran) + '</textarea></div>' +
-        '<button type="submit" class="btn btn-green btn-block">Simpan ATP</button>' +
-      '</form>'
-    );
-  };
+  var optTp = tps.length
+    ? '<option value="">-- Pilih Kode TP dari Analisis CP --</option>' + tps.map(function(t, i) {
+        var label = '[' + escapeHtml(t.kode) + '] ' + escapeHtml(t.bab) + (t.materi ? ' - ' + escapeHtml(t.materi) : '');
+        return '<option value="' + i + '"' + (String(i) === selectedIdx ? ' selected' : '') + '>' + label + '</option>';
+      }).join('')
+    : '<option value="">(Belum ada TP di Analisis CP pada Fase ini)</option>';
+
+  openModal(ex ? 'Edit ATP' : 'Tambah ATP',
+    '<form onsubmit="saveATP(event,\'' + (id || '') + '\')">' +
+      '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
+        '<label class="form-label">Pilih Kode TP (Otomatis Mengisi BAB, Materi & Tujuan Pembelajaran)</label>' +
+        '<select id="f-atp-pilih-tp" class="form-control" onchange="onPilihKodeTpATP(this)">' +
+          optTp +
+        '</select>' +
+      '</div>' +
+      '<div class="grid-2">' +
+        '<div class="form-group"><label class="form-label">Kode TP</label><input type="text" id="f-atp-kode" class="form-control" value="' + escapeHtml(def.kodeTp || '') + '" required></div>' +
+        '<div class="form-group"><label class="form-label">Waktu</label><input type="text" id="f-atp-waktu" class="form-control" value="' + escapeHtml(def.alokasiWaktu || '4 JP') + '" required></div>' +
+      '</div>' +
+      '<div class="form-group"><label class="form-label">BAB (Otomatis Terisi)</label><input type="text" id="f-atp-bab" class="form-control" value="' + escapeHtml(def.bab || '') + '" required></div>' +
+      '<div class="form-group"><label class="form-label">Lingkup Materi (Otomatis Terisi)</label><input type="text" id="f-atp-materi" class="form-control" value="' + escapeHtml(def.lingkupMateri || '') + '" required></div>' +
+      '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-atp-elemen" class="form-control" value="' + escapeHtml(def.elemen || '') + '" required></div>' +
+      '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP) (Otomatis Terisi)</label><textarea id="f-atp-tp" class="form-control" rows="3" required>' + escapeHtml(def.tujuanPembelajaran || '') + '</textarea></div>' +
+      '<button type="submit" class="btn btn-green btn-block">Simpan ATP</button>' +
+    '</form>'
+  );
+};
 
   window.openProtaModal = function(id) {
     id = id || null; var ex = id ? appState.protaList.find(function(x) { return x.id === id; }) : null, tps = getTps(), p0 = tps.slice(0,1).pop();
