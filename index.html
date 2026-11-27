@@ -4172,10 +4172,19 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
                   • PGK Kategori (4 pernyataan) = <strong>4</strong><br>
                   • Isian Singkat = <strong>2</strong><br>
                   • Uraian = <strong>5</strong><br>
-                  <em>Total Skor Maksimal: <strong>${generated.totalSkorMaks}</strong></em>
-                </div>
-                <button type="button" class="btn btn-green btn-block" style="margin-top:10px;" onclick="renderCurrentMenu(); showToast('Kisi-kisi, Naskah Soal Berstimulus & Lembar Kunci Jawaban diperbarui!');">Susun Naskah Soal Sekarang</button>
-              </div>
+                           <em>Total Skor Maksimal: <strong>${generated.totalSkorMaks}</strong></em>
+        </div>
+        <div class="form-group" style="margin-top:8px;margin-bottom:0;">
+          <label class="form-label" style="color:#78350f;font-weight:800;">Tingkat Kesulitan & Bahasa Soal (Siswa SD)</label>
+          <select class="form-control" onchange="updateAsesmenCfg('kesulitan', this.value); renderCurrentMenu();">
+            <option value="mudah" ${(cfg.kesulitan || 'mudah') === 'mudah' ? 'selected' : ''}>Mudah (Kalimat Pendek & Sederhana untuk SD)</option>
+            <option value="sedang" ${cfg.kesulitan === 'sedang' ? 'selected' : ''}>Sedang (Cerita Singkat & Penerapan Sehari-hari)</option>
+            <option value="sulit" ${cfg.kesulitan === 'sulit' ? 'selected' : ''}>Sulit (Studi Kasus & Penalaran / HOTS SD)</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-green btn-block" style="margin-top:10px;" onclick="renderCurrentMenu();">Susun Naskah Soal Sekarang</button>
+      </div>
+
             </div>
           </div>
 
@@ -4337,10 +4346,15 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
               <circle cx="44" cy="18" r="6" fill="#db2777"/>
               <path d="M36 36 C36 28, 52 28, 52 36" fill="#78350f"/>
             </svg>
-            <div style="font-size:12.5px;">
-              <strong>Perhatikan ilustrasi kegiatan siswa di atas!</strong><br>
-              Gambar menunjukkan dua peserta didik yang sedang berdiskusi dan bekerja sama dalam menerapkan <em>${escapeHtml(topicClean)}</em> di sekolah.
-            </div>
+                 <div style="font-size:12.5px;">
+        <strong>${(cfg.kesulitan || 'mudah') === 'mudah' ? 'Ayo perhatikan gambar berikut!' : (cfg.kesulitan === 'sedang' ? 'Perhatikan cerita singkat berikut!' : 'Bacalah kasus berikut dengan teliti!')}</strong><br>
+        ${(cfg.kesulitan || 'mudah') === 'mudah'
+          ? `Rani dan Edo sedang belajar di kelas tentang <strong>${escapeHtml(topicClean)}</strong> dengan senang dan tertib.`
+          : (cfg.kesulitan === 'sedang'
+            ? `Saat pelajaran berlangsung, Rani dan Edo berdiskusi bersama kelompoknya untuk mempraktikkan <strong>${escapeHtml(topicClean)}</strong> dalam kegiatan sehari-hari.`
+            : `Di kelas, kelompok Rani mengalami kesulitan saat mengerjakan tugas tentang <strong>${escapeHtml(topicClean)}</strong> sehingga perlu mencari cara terbaik untuk menyelesaikannya bersama.`)}
+      </div>
+
           </div>
         `;
       };
@@ -4362,12 +4376,12 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
           naskahHtml += `
             <div style="margin-bottom:14px;font-size:13px;">
               ${makeStimulus(no, topicClean)}
-              <div style="font-weight:700;margin-bottom:4px;">${no}. Berdasarkan ilustrasi/bacaan tersebut, sikap dan tindakan yang paling tepat dalam menerapkan ${escapeHtml(topicClean)} adalah ....</div>
-              <div style="padding-left:18px;">
-                A. Memahami konsep dengan baik dan menerapkannya secara bertanggung jawab<br>
-                B. Mengabaikan kesepakatan bersama saat bekerja dalam kelompok<br>
-                C. Menunda penyelesaian tugas tanpa alasan yang dapat dipertanggungjawabkan<br>
-                D. Bekerja sendiri tanpa menghargai pendapat teman di kelas
+                    <div style="font-weight:700;margin-bottom:4px;">${no}. ${(cfg.kesulitan || 'mudah') === 'mudah' ? 'Berdasarkan gambar di atas, sikap baik yang harus kita lakukan adalah ...' : (cfg.kesulitan === 'sedang' ? 'Berdasarkan cerita di atas, tindakan yang tepat saat belajar bersama teman adalah ...' : 'Berdasarkan masalah pada bacaan di atas, langkah pemecahan yang paling tepat adalah ...')}</div>
+        <div style="padding-left:18px;">
+          A. Memahami materi dengan sungguh-sungguh dan mengerjakannya dengan baik<br>
+          B. Bermain sendiri dan tidak mau mendengarkan penjelasan guru<br>
+          C. Membiarkan tugas kelompok dikerjakan oleh satu teman saja<br>
+          D. Tidak mau bekerja sama dan mengganggu teman yang sedang belajar
               </div>
             </div>
           `;
