@@ -3842,6 +3842,23 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
               ${atps.map(a => `<option value="${a.id}" ${a.id === currentAtp.id ? 'selected' : ''}>[${escapeHtml(a.kodeTp)}] ${escapeHtml(a.lingkupMateri)}</option>`).join('')}
             </select>
           </div>
+    <div class="no-print" style="background:#eff6ff;padding:14px;border-radius:12px;border:1.5px solid #2563eb;margin-bottom:14px;">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;">
+        <div>
+          <label class="form-label" style="color:#1e3a8a;margin-bottom:2px;">Unggah Buku Siswa (File PDF) — Baca Otomatis per BAB</label>
+          <div style="font-size:12px;color:#475569;">Unggah 1x PDF Buku Siswa (${escapeHtml(mapel)} Kelas ${escapeHtml(kelas)}). Sistem otomatis memisahkan materi tiap BAB untuk Bahan Ajar & Soal Asesmen.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="file" id="inp-pdf-buku-siswa" accept="application/pdf,.pdf" style="font-size:12px;" onchange="prosesPdfBukuSiswa(this)" />
+          ${(appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel]) ? `<button type="button" class="btn btn-red" style="padding:5px 10px;font-size:11px;" onclick="hapusPdfBukuSiswa()">Hapus PDF</button>` : ''}
+        </div>
+      </div>
+      <div id="status-pdf-buku" style="margin-top:6px;font-size:12px;font-weight:700;color:#15803d;">
+        ${(appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel])
+          ? `✅ Buku PDF aktif: "${escapeHtml(appState.bukuPdfData[kelas + '_' + mapel].namaFile)}" (${Object.keys(appState.bukuPdfData[kelas + '_' + mapel].perBab || {}).length} bagian BAB terdeteksi)`
+          : 'Belum ada file PDF Buku Siswa diunggah untuk mapel & kelas ini.'}
+      </div>
+    </div>
 
           ${renderKopSurat(`BAHAN AJAR PESERTA DIDIK (MATERI LENGKAP)`, `Mata Pelajaran: ${mapel} • Kelas ${kelas} • Semester ${semester} • TA ${appState.context.ta}`)}
 
@@ -3877,15 +3894,24 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
             </svg>
           </div>
 
-          <div class="doc-section-title">3. Penjelasan Materi Secara Mendalam</div>
-          <div style="font-size:13.5px;line-height:1.7;margin-bottom:16px;">
-            <p style="margin-bottom:10px;"><strong>A. Pengertian dan Konsep Dasar:</strong><br>
-            Pada materi <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>, peserta didik diajak memahami prinsip-prinsip penting pada elemen <em>${escapeHtml(currentAtp.elemen)}</em>. Pemahaman yang kuat tidak hanya menghafal definisi, melainkan mengetahui alasan mengapa konsep tersebut penting bagi diri sendiri, keluarga, dan masyarakat sekitar di Kabupaten Gorontalo.</p>
-            <p style="margin-bottom:10px;"><strong>B. Unsur-Unsur Penting yang Perlu Dikuasai:</strong><br>
-            1) Mengidentifikasi ciri-ciri dan fakta utama yang berkaitan dengan topik pembelajaran secara teliti.<br>
-            2) Menghubungkan konsep yang dipelajari dengan situasi nyata yang sering dijumpai di lingkungan sekolah maupun desa.<br>
-            3) Membiasakan sikap tanggung jawab, saling menghargai, dan kerja sama saat mempraktikkannya bersama teman.</p>
-          </div>
+                <div class="doc-section-title">3. Penjelasan Materi Secara Mendalam</div>
+      <div style="font-size:13.5px;line-height:1.7;margin-bottom:16px;">
+        ${(function() {
+          const kutipanPdf = typeof ambilMateriPdfSesuaiBab === 'function' ? ambilMateriPdfSesuaiBab(kelas, mapel, currentAtp.bab, currentAtp.lingkupMateri) : '';
+          if (kutipanPdf) {
+            return `<p style="margin-bottom:10px;"><strong>A. Uraian Materi dari Buku Siswa (${escapeHtml(currentAtp.bab || currentAtp.lingkupMateri)}):</strong><br>
+            ${escapeHtml(kutipanPdf).replace(/\n/g, '<br>')}</p>
+            <p style="margin-bottom:10px;"><strong>B. Target Penguasaan Tujuan Pembelajaran:</strong><br>
+            ${escapeHtml(currentAtp.tujuanPembelajaran)}</p>`;
+          }
+          return `<p style="margin-bottom:10px;"><strong>A. Pengertian dan Konsep Dasar:</strong><br>
+          Pada materi <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>, peserta didik diajak memahami prinsip-prinsip penting yang menjadi dasar penguasaan kompetensi pada <strong>${escapeHtml(currentAtp.tujuanPembelajaran)}</strong>.</p>
+          <p style="margin-bottom:10px;"><strong>B. Unsur-Unsur Penting yang Perlu Dikuasai:</strong><br>
+          1) Mengidentifikasi ciri-ciri dan fakta utama yang berkaitan dengan topik pembelajaran secara teliti.<br>
+          2) Menghubungkan konsep yang dipelajari dengan situasi nyata yang sering dijumpai di lingkungan sekolah maupun daerah sekitar.<br>
+          3) Membiasakan sikap tanggung jawab, saling menghargai, dan kerja sama saat mempraktikkannya bersama teman.</p>`;
+        })()}
+      </div>
 
           <div class="doc-section-title">4. Contoh Penerapan dalam Kehidupan Sehari-hari</div>
           <div class="table-wrap" style="margin-bottom:16px;">
@@ -5845,6 +5871,88 @@ window.openATPModal = function(id) {
       }
     });
   })();
+  window.ambilMateriPdfSesuaiBab = function(kelas, mapel, bab, lingkupMateri) {
+  if (!appState.bukuPdfData) return '';
+  var rec = appState.bukuPdfData[String(kelas || '').trim() + '_' + String(mapel || '').trim()];
+  if (!rec || !rec.perBab) return '';
+  var keys = Object.keys(rec.perBab);
+  if (!keys.length) return rec.semuaTeks ? rec.semuaTeks.slice(0, 1500) : '';
+  var targetBab = String(bab || lingkupMateri || '').toLowerCase();
+  var mNo = targetBab.match(/bab\s*(\d+|[ivx]+)/i);
+  if (mNo) {
+    var kCocok = keys.find(function(k) { return k.toLowerCase().indexOf('bab ' + mNo.at(1).toLowerCase()) !== -1; });
+    if (kCocok && rec.perBab[kCocok]) return rec.perBab[kCocok];
+  }
+  var kataKunci = String(lingkupMateri || '').replace(/^bab\s*\d+\s*[-–:]\s*/i, '').toLowerCase().split(/\s+/).filter(function(w) { return w.length > 3; });
+  for (var i = 0; i < keys.length; i++) {
+    var isi = rec.perBab[keys.at(i)] || '';
+    if (kataKunci.some(function(w) { return isi.toLowerCase().indexOf(w) !== -1; })) return isi;
+  }
+  return rec.perBab[keys.at(0)] || '';
+};
+
+window.hapusPdfBukuSiswa = function() {
+  var k = String(appState.context.kelas || '').trim() + '_' + String(appState.context.mapel || '').trim();
+  if (appState.bukuPdfData && appState.bukuPdfData[k]) {
+    delete appState.bukuPdfData[k];
+    if (typeof saveState === 'function') saveState();
+    if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
+  }
+};
+
+window.prosesPdfBukuSiswa = async function(input) {
+  var file = input && input.files && input.files.item(0);
+  if (!file) return;
+  var st = document.getElementById('status-pdf-buku');
+  if (st) st.textContent = '⏳ Sedang membaca seluruh halaman PDF Buku Siswa, mohon tunggu...';
+  try {
+    if (!window.pdfjsLib) {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cloudflare.com';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
+    }
+    var buf = await file.arrayBuffer();
+    var pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    var semuaTeks = '';
+    for (var p = 1; p <= pdf.numPages; p++) {
+      var page = await pdf.getPage(p);
+      var tc = await page.getTextContent();
+      var baris = tc.items.map(function(it) { return it.str; }).join(' ');
+      semuaTeks += '\n' + baris;
+    }
+    var bersih = semuaTeks.replace(/\s+/g, ' ').trim();
+    if (bersih.length < 50) {
+      if (st) st.textContent = '⚠️ PDF ini berupa hasil scan gambar tanpa teks digital. Gunakan PDF Buku Siswa resmi Kemendikbud (teks digital).';
+      return;
+    }
+    var perBab = {};
+    var potongan = bersih.split(/(?=\bBAB\s+(?:[1-9]|1[0-5]|[IVX]+)\b)/i);
+    if (potongan.length > 1) {
+      potongan.forEach(function(seg) {
+        var m = seg.match(/^\b(BAB\s+(?:[1-9]|1[0-5]|[IVX]+))\b/i);
+        if (m) {
+          var namaBab = m.at(1).toUpperCase().replace(/\s+/g, ' ');
+          perBab[namaBab] = (perBab[namaBab] ? perBab[namaBab] + '\n\n' : '') + seg.slice(0, 2200).trim();
+        }
+      });
+    } else {
+      perBab['BAB 1'] = bersih.slice(0, 2500);
+    }
+    if (!appState.bukuPdfData) appState.bukuPdfData = {};
+    var key = String(appState.context.kelas || '').trim() + '_' + String(appState.context.mapel || '').trim();
+    appState.bukuPdfData[key] = { namaFile: file.name, perBab: perBab, semuaTeks: bersih.slice(0, 12000) };
+    if (typeof saveState === 'function') saveState();
+    if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
+  } catch (err) {
+    if (st) st.textContent = '❌ Gagal membaca PDF: ' + (err && err.message ? err.message : 'Pastikan file PDF valid.');
+  }
+};
+
 </script>
 
 </body>
