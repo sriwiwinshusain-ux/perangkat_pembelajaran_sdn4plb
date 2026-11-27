@@ -3910,100 +3910,99 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
 
           ${renderKopSurat(`BAHAN AJAR PESERTA DIDIK (MATERI LENGKAP)`, `Mata Pelajaran: ${mapel} • Kelas ${kelas} • Semester ${semester} • TA ${appState.context.ta}`)}
 
-          <div style="background:#fefce8;border:2px solid #eab308;border-radius:14px;padding:16px;margin-bottom:16px;">
-            <div style="font-size:15px;font-weight:900;color:#78350f;margin-bottom:4px;">Topik / Lingkup Materi: ${escapeHtml(currentAtp.lingkupMateri)}</div>
-            <div style="font-size:13px;color:#334155;"><strong>Tujuan Pembelajaran:</strong> ${escapeHtml(currentAtp.tujuanPembelajaran)}</div>
-          </div>
+                ${(function() {
+        const rawPdf = typeof ambilMateriPdfSesuaiBab === 'function' ? ambilMateriPdfSesuaiBab(kelas, mapel, currentAtp.bab, currentAtp.lingkupMateri) : '';
+        const bersihPdf = String(rawPdf || '').replace(/^BAB\s*(?:[1-9]|1[0-5]|[IVX]+)\s*[:.\-–]?\s*/i, '').replace(/\s+/g, ' ').trim();
+        const kalimatList = bersihPdf
+          ? bersihPdf.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length >= 25 && s.length <= 240 && !/^(gambar|tabel|sumber|halaman|ayo|mari|coba)\b/i.test(s))
+          : [];
+        const poinRangkuman = kalimatList.slice(0, 5);
 
-          <div class="doc-section-title">1. Cerita Kontekstual: Belajar Bersama di SDN 4 Pulubala</div>
-          <div style="background:#f0fdf4;border-left:5px solid #16a34a;padding:14px 16px;border-radius:10px;font-size:13.5px;margin-bottom:16px;">
-            Pagi itu matahari bersinar cerah di halaman <strong>SDN 4 Pulubala</strong>. Siti, Budi, dan teman-teman Kelas ${kelas} sedang bersiap mengikuti pelajaran <strong>${escapeHtml(mapel)}</strong>. Di halaman sekolah, tampak kebun tanaman obat keluarga dan poster budaya gotong royong <em>Huyula</em> khas Gorontalo yang tertata rapi.<br><br>
-            "Anak-anak, hari ini kita akan mempelajari <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>. Coba perhatikan bagaimana kegiatan sehari-hari di rumah maupun di sekolah sangat berkaitan dengan materi ini," ujar Ibu Guru ramah. Siti pun mengangkat tangan dengan semangat dan menceritakan pengalamannya saat membantu orang tua di rumah, sehingga seluruh kelas berdiskusi dengan gembira.
-          </div>
-
-          <div class="doc-section-title">2. Ilustrasi Visual & Peta Konsep Materi</div>
-          <div style="text-align:center;background:#fff;border:1.5px solid #cbd5e1;border-radius:12px;padding:14px;margin-bottom:16px;">
-            <svg viewBox="0 0 640 190" style="max-width:620px;width:100%;height:auto;">
-              <rect x="10" y="10" width="620" height="170" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
-              <rect x="210" y="22" width="220" height="42" rx="10" fill="#166534"/>
-              <text x="320" y="48" text-anchor="middle" fill="#fde047" font-size="13" font-weight="bold">KONSEP UTAMA (${escapeHtml(currentAtp.elemen.slice(0, 22))})</text>
-              <line x1="320" y1="64" x2="120" y2="105" stroke="#78350f" stroke-width="2.5"/>
-              <line x1="320" y1="64" x2="320" y2="105" stroke="#78350f" stroke-width="2.5"/>
-              <line x1="320" y1="64" x2="520" y2="105" stroke="#78350f" stroke-width="2.5"/>
-              <rect x="30" y="105" width="180" height="58" rx="10" fill="#fef9c3" stroke="#eab308" stroke-width="2"/>
-              <text x="120" y="130" text-anchor="middle" fill="#451a03" font-size="12" font-weight="bold">1. Memahami Konsep</text>
-              <text x="120" y="148" text-anchor="middle" fill="#334155" font-size="11">Ciri, Makna & Aturan</text>
-              <rect x="230" y="105" width="180" height="58" rx="10" fill="#fce7f3" stroke="#db2777" stroke-width="2"/>
-              <text x="320" y="130" text-anchor="middle" fill="#831843" font-size="12" font-weight="bold">2. Penerapan Nyata</text>
-              <text x="320" y="148" text-anchor="middle" fill="#334155" font-size="11">Di Rumah & SDN 4 Pulubala</text>
-              <rect x="430" y="105" width="180" height="58" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-              <text x="520" y="130" text-anchor="middle" fill="#14532d" font-size="12" font-weight="bold">3. Sikap & Karakter</text>
-              <text x="520" y="148" text-anchor="middle" fill="#334155" font-size="11">Mandiri, Kritis & Huyula</text>
-            </svg>
-          </div>
-
-                <div class="doc-section-title">3. Penjelasan Materi Secara Mendalam</div>
-      <div style="font-size:13.5px;line-height:1.7;margin-bottom:16px;">
-        ${(function() {
-          const kutipanPdf = typeof ambilMateriPdfSesuaiBab === 'function' ? ambilMateriPdfSesuaiBab(kelas, mapel, currentAtp.bab, currentAtp.lingkupMateri) : '';
-          if (kutipanPdf) {
-            return `<p style="margin-bottom:10px;"><strong>A. Uraian Materi dari Buku Siswa (${escapeHtml(currentAtp.bab || currentAtp.lingkupMateri)}):</strong><br>
-            ${escapeHtml(kutipanPdf).replace(/\n/g, '<br>')}</p>
-            <p style="margin-bottom:10px;"><strong>B. Target Penguasaan Tujuan Pembelajaran:</strong><br>
-            ${escapeHtml(currentAtp.tujuanPembelajaran)}</p>`;
+        const buatIsian = (kal, idx) => {
+          const kataList = kal.replace(/[.,!?;:()"']/g, '').split(/\s+/);
+          let targetIdx = -1;
+          for (let i = kataList.length - 1; i >= 1; i--) {
+            if (kataList.at(i).length >= 5 && !/^(adalah|dengan|untuk|dalam|secara|bahwa|yaitu|dapat|harus|tidak|merupakan|seperti|melalui|ketika|setelah|sebelum)$/i.test(kataList.at(i))) {
+              targetIdx = i;
+              break;
+            }
           }
-          return `<p style="margin-bottom:10px;"><strong>A. Pengertian dan Konsep Dasar:</strong><br>
-          Pada materi <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>, peserta didik diajak memahami prinsip-prinsip penting yang menjadi dasar penguasaan kompetensi pada <strong>${escapeHtml(currentAtp.tujuanPembelajaran)}</strong>.</p>
-          <p style="margin-bottom:10px;"><strong>B. Unsur-Unsur Penting yang Perlu Dikuasai:</strong><br>
-          1) Mengidentifikasi ciri-ciri dan fakta utama yang berkaitan dengan topik pembelajaran secara teliti.<br>
-          2) Menghubungkan konsep yang dipelajari dengan situasi nyata yang sering dijumpai di lingkungan sekolah maupun daerah sekitar.<br>
-          3) Membiasakan sikap tanggung jawab, saling menghargai, dan kerja sama saat mempraktikkannya bersama teman.</p>`;
-        })()}
-      </div>
+          if (targetIdx === -1) {
+            return {
+              tanya: `Pada materi <strong>${escapeHtml(currentAtp.bab)}</strong>, kegiatan utama yang dipelajari peserta didik adalah ....`,
+              jawab: escapeHtml(currentAtp.lingkupMateri)
+            };
+          }
+          const kunci = kataList.at(targetIdx);
+          const soalTeks = kal.replace(new RegExp('\\b' + kunci.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'), '....................');
+          return { tanya: escapeHtml(soalTeks), jawab: escapeHtml(kunci) };
+        };
 
-          <div class="doc-section-title">4. Contoh Penerapan dalam Kehidupan Sehari-hari</div>
-          <div class="table-wrap" style="margin-bottom:16px;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:170px;">Lingkungan</th>
-                  <th>Contoh Penerapan Nyata</th>
-                  <th>Manfaat yang Dirasakan</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Di Lingkungan Rumah</strong></td>
-                  <td>Membantu orang tua menjaga kebersihan, berbicara santun, dan melaksanakan tugas harian dengan penuh tanggung jawab.</td>
-                  <td>Suasana keluarga menjadi rukun, harmonis, dan saling menyayangi.</td>
-                </tr>
-                <tr>
-                  <td><strong>Di SDN 4 Pulubala</strong></td>
-                  <td>Bekerja sama dalam piket kelas, menghargai pendapat teman saat diskusi kelompok, dan menjaga fasilitas sekolah.</td>
-                  <td>Belajar menjadi nyaman, tertib, dan prestasi belajar meningkat.</td>
-                </tr>
-                <tr>
-                  <td><strong>Di Masyarakat Pulubala</strong></td>
-                  <td>Ikut serta dalam kegiatan gotong royong (<em>Huyula</em>), menjaga kebersihan lingkungan desa, dan menghormati orang yang lebih tua.</td>
-                  <td>Terwujudnya masyarakat yang rukun, aman, dan melestarikan budaya daerah.</td>
-                </tr>
-              </tbody>
-            </table>
+        const isianItems = [0, 1, 2].map(i => {
+          if (kalimatList.at(i)) return buatIsian(kalimatList.at(i), i);
+          const sub = materiDalamBab.at(i) || currentAtp.lingkupMateri;
+          return {
+            tanya: `Salah satu materi pokok yang dipelajari pada <strong>${escapeHtml(currentAtp.bab)}</strong> adalah ....`,
+            jawab: escapeHtml(sub)
+          };
+        });
+
+        const uraianItems = [
+          {
+            tanya: `Jelaskan dengan bahasamu sendiri pengertian dan hal penting yang kamu pelajari pada materi <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>!`,
+            jawab: escapeHtml(kalimatList.slice(0, 2).join(' ') || `Materi ${currentAtp.lingkupMateri} membahas konsep dasar dan praktik yang harus dikuasai siswa pada ${currentAtp.bab}.`)
+          },
+          {
+            tanya: `Sebutkan contoh kegiatan atau cara mempraktikkan <strong>${escapeHtml(materiDalamBab.at(0) || currentAtp.lingkupMateri)}</strong> dengan benar dan aman!`,
+            jawab: escapeHtml(kalimatList.slice(2, 4).join(' ') || `Dilakukan sesuai langkah-langkah yang benar, tertib, disiplin, dan memperhatikan keselamatan bersama.`)
+          }
+        ];
+
+        return `
+          <div style="background:#fefce8;border:2px solid #eab308;border-radius:14px;padding:16px;margin-bottom:16px;">
+            <div style="font-size:15px;font-weight:900;color:#78350f;margin-bottom:4px;">BAB &amp; Lingkup Materi: ${escapeHtml(currentAtp.lingkupMateri)}</div>
+            <div style="font-size:13px;color:#334155;"><strong>Tujuan Pembelajaran (TP):</strong> ${escapeHtml(currentAtp.tujuanPembelajaran)}</div>
           </div>
 
-          <div class="doc-section-title">5. Contoh Soal Latihan & Pembahasan</div>
-          <div style="background:#fdf2f8;border:1.5px solid #f472b6;border-radius:12px;padding:14px;font-size:13.5px;margin-bottom:16px;">
-            <strong>Contoh Kasus:</strong><br>
-            Saat melakukan kerja kelompok pada materi <em>${escapeHtml(currentAtp.lingkupMateri)}</em>, dua orang anggota kelompok memiliki pendapat yang berbeda dalam menyelesaikan tugas. Sikap terbaik yang seharusnya dilakukan oleh ketua dan anggota kelompok adalah ....<br><br>
-            <strong>Pembahasan:</strong><br>
-            Sikap terbaik adalah bermusyawarah dengan kepala dingin, mendengarkan alasan masing-masing pendapat secara santun, dan menggabungkan ide terbaik demi kepentingan bersama. Hal ini mencerminkan penguasaan konsep sekaligus karakter gotong royong dan bernalar kritis.
+          <div class="doc-section-title">1. Ringkasan Materi Pokok (Sesuai Buku Siswa)</div>
+          <div style="font-size:13.5px;line-height:1.75;margin-bottom:16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;text-align:justify;">
+            ${bersihPdf
+              ? `<p style="margin:0;">${escapeHtml(bersihPdf)}</p>`
+              : `<p style="margin:0;color:#64748b;"><em>Belum ada file PDF Buku Siswa untuk BAB ini. Silakan unggah PDF Buku Siswa atau tempel ringkasan materi pada kotak biru di atas agar ringkasan materi otomatis muncul di sini.</em></p>`}
           </div>
 
-          <div class="doc-section-title">6. Rangkuman Materi</div>
-          <div style="background:#f1f5f9;padding:12px 16px;border-radius:10px;font-size:13px;">
-            • Materi <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong> membantu peserta didik memahami konsep dan mempraktikkannya dalam kehidupan nyata.<br>
-            • Penerapan nilai kedisiplinan, kerja sama (<em>Huyula</em>), dan bernalar kritis menjadikan hasil belajar lebih bermakna dan bermanfaat bagi sesama.
+          <div class="doc-section-title">2. Poin-Poin Rangkuman Materi</div>
+          <div style="background:#f1f5f9;padding:12px 18px;border-radius:10px;font-size:13px;line-height:1.7;margin-bottom:16px;">
+            <ul style="margin:0;padding-left:18px;">
+              ${poinRangkuman.length
+                ? poinRangkuman.map(p => `<li style="margin-bottom:4px;">${escapeHtml(p)}</li>`).join('')
+                : `<li>Memahami konsep pokok dan tujuan pembelajaran pada <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>.</li>
+                   <li>Mempraktikkan langkah-langkah pembelajaran dengan tertib, percaya diri, dan penuh tanggung jawab.</li>`}
+            </ul>
           </div>
+
+          <div class="doc-section-title">3. Latihan Soal Siswa (3 Isian Singkat &amp; 2 Uraian)</div>
+          <div style="background:#fdf2f8;border:1.5px solid #f472b6;border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.7;margin-bottom:16px;">
+            <div style="font-weight:800;color:#9d174d;margin-bottom:6px;">A. Isilah titik-titik di bawah ini dengan jawaban yang tepat!</div>
+            <ol style="margin:0 0 14px 0;padding-left:20px;">
+              ${isianItems.map(it => `<li style="margin-bottom:6px;">${it.tanya}</li>`).join('')}
+            </ol>
+
+            <div style="font-weight:800;color:#9d174d;margin-bottom:6px;">B. Jawablah pertanyaan-pertanyaan berikut dengan jelas dan benar!</div>
+            <ol start="4" style="margin:0 0 14px 0;padding-left:20px;">
+              ${uraianItems.map(it => `<li style="margin-bottom:6px;">${it.tanya}</li>`).join('')}
+            </ol>
+
+            <div style="background:#fff;border:1px dashed #ec4899;border-radius:8px;padding:10px 12px;font-size:12.5px;">
+              <strong style="color:#831843;">Kunci Jawaban Latihan:</strong><br>
+              <strong>Isian:</strong> 1) ${isianItems.at(0).jawab} &nbsp;|&nbsp; 2) ${isianItems.at(1).jawab} &nbsp;|&nbsp; 3) ${isianItems.at(2).jawab}<br>
+              <strong>Uraian:</strong><br>
+              4) ${uraianItems.at(0).jawab}<br>
+              5) ${uraianItems.at(1).jawab}
+            </div>
+          </div>
+        `;
+      })()}
           ${renderTandaTangan()}
         </div>
       `;
