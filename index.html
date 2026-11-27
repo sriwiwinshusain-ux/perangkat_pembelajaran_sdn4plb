@@ -5013,7 +5013,7 @@
     }
   };
 
-  window.isiOtomatisCpDariBabMateri = function() {
+ window.isiOtomatisCpDariBabMateri = function() {
   var c = appState.context, fase = kelasToFase(c.kelas);
   var cps = (appState.cpList || []).filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
   if (!cps.length) return;
@@ -5026,13 +5026,17 @@
   var materiChks = Array.from(document.querySelectorAll('.chk-an-materi-item:checked')).map(function(el) { return el.value.trim().toLowerCase(); });
 
   var semuaBank = getBabBank() || [];
-  var itemCocok = semuaBank.find(function(it) {
-    var b = String(it.bab || '').trim().toLowerCase();
-    var m = String(it.materi || '').trim().toLowerCase();
-    return (!babVal || b === babVal) && materiChks.some(function(mc) { return m === mc || m.indexOf(mc) > -1 || mc.indexOf(m) > -1; });
-  }) || semuaBank.find(function(it) {
-    return String(it.bab || '').trim().toLowerCase() === babVal;
-  });
+  var itemCocok = null;
+  if (materiChks.length) {
+    itemCocok = semuaBank.find(function(it) {
+      var b = String(it.bab || '').trim().toLowerCase();
+      var m = String(it.materi || '').trim().toLowerCase();
+      return (!babVal || b === babVal) && materiChks.some(function(mc) { return m === mc || m.indexOf(mc) > -1 || mc.indexOf(m) > -1; });
+    });
+  }
+  if (!itemCocok) {
+    itemCocok = semuaBank.find(function(it) { return String(it.bab || '').trim().toLowerCase() === babVal && it.elemen; });
+  }
 
   var cpCocok = null;
   if (itemCocok && itemCocok.elemen) {
@@ -5040,6 +5044,24 @@
     cpCocok = cps.find(function(x) { return String(x.elemen || '').trim().toLowerCase() === elTarget; }) ||
               cps.find(function(x) { return String(x.elemen || '').trim().toLowerCase().indexOf(elTarget) > -1; });
   }
+
+  if (!cpCocok) {
+    var teksMateri = materiChks.length ? materiChks.join(' ') : babVal;
+    var aturanElemen = [
+      { kunci: /(menggambar|membuat|mencipta|berkarya|membentuk|melukis|mewarnai|memotong|menempel|merancang|praktik|eksplorasi media)/i, elemen: /(menciptakan|making|creating|berkarya)/i },
+      { kunci: /(mengapresiasi|menilai|mengevaluasi|merefleksi|tanggapan|ulasan|komentar|kritik|pameran)/i, elemen: /(merefleksikan|reflecting|apresiasi)/i },
+      { kunci: /(berdampak|lingkungan|budaya|masyarakat|sehari-hari|manfaat|sikap|karakter)/i, elemen: /(berdampak|impacting)/i },
+      { kunci: /(berpikir|bekerja artistik|prosedur|langkah|alat|bahan|teknik dasar)/i, elemen: /(berpikir|artistik|thinking)/i },
+      { kunci: /(mengenali|mengamati|unsur|prinsip|mengidentifikasi|menjelaskan|pengertian|jenis)/i, elemen: /(mengalami|experiencing)/i }
+    ];
+    for (var i = 0; i < aturanElemen.length; i++) {
+      if (aturanElemen.at(i).kunci.test(teksMateri)) {
+        cpCocok = cps.find(function(x) { return aturanElemen.at(i).elemen.test(String(x.elemen || '')); });
+        if (cpCocok) break;
+      }
+    }
+  }
+
   if (!cpCocok) {
     var kataKunci = (materiChks.join(' ') + ' ' + babVal).trim();
     var daftarKata = kataKunci.split(/[\s,.\-()/]+/).filter(function(w) { return w.length > 3 && ['dalam','pada','yang','untuk','dengan','dari','seni','rupa'].indexOf(w) === -1; });
@@ -5051,14 +5073,14 @@
       if (skor > skorTertinggi) { skorTertinggi = skor; cpCocok = x; }
     });
   }
-  if (!cpCocok) cpCocok = cps[0];
+  if (!cpCocok) cpCocok = cps.at(0);
 
   if (cpCocok) {
     if (elElemen) elElemen.value = cpCocok.elemen || '';
     if (elCp) elCp.value = cpCocok.cp || '';
     if (elKomp) {
       var mKomp = String(cpCocok.cp || '').match(/(menjelaskan|mengidentifikasi|menganalisis|mempraktikkan|menerapkan|mengenal|memahami|mengeksplorasi|menciptakan|merefleksikan|mengapresiasi|menggambar|membuat|menyajikan)/i);
-      elKomp.value = mKomp ? (mKomp[1].charAt(0).toUpperCase() + mKomp[1].slice(1).toLowerCase()) : ('Memahami ' + (cpCocok.elemen || ''));
+      elKomp.value = mKomp ? (mKomp.at(0).charAt(0).toUpperCase() + mKomp.at(0).slice(1).toLowerCase()) : ('Memahami ' + (cpCocok.elemen || ''));
     }
   }
 };
