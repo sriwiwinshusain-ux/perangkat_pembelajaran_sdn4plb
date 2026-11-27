@@ -5370,7 +5370,7 @@ window.openAnalisisCPModal = function(id) {
             var teks = String(m.materi || '').trim();
             var checked = !ex ? (idx === 0) : (tercentang.indexOf(teks) > -1);
             return '<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:#fff;border:1px solid #bbf7d0;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px;">' +
-              '<input type="checkbox" class="chk-materi-an" value="' + escapeHtml(teks) + '"' + (checked ? ' checked' : '') + ' onchange="syncCeklisKeGabungan()">' +
+              '<input type="checkbox" class="chk-an-materi-item" value="' + escapeHtml(teks) + '"' + (checked ? ' checked' : '') + ' onchange="syncCeklisKeGabungan()">' +
               '<span>' + escapeHtml(teks) + '</span>' +
             '</label>';
           }).join('');
