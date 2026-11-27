@@ -5081,27 +5081,51 @@
 
   window.getTpsGlobal = function(i) { return i === '' ? null : (getTps().slice(parseInt(i,10), parseInt(i,10)+1).pop() || null); };
 
-    window.onPilihBabMateriATP = function(sel) {
-    var opt = sel.options.item(sel.selectedIndex);
-    var babDipilih = (opt && opt.dataset.bab) ? opt.dataset.bab.trim() : '';
-    var materiDipilih = String(sel.value || '').trim();
-    if (!materiDipilih) return;
+   window.onPilihBabMateriATP = function(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var babDipilih = (opt && opt.dataset && opt.dataset.bab) ? opt.dataset.bab.trim() : '';
+  var materiDipilih = String(sel.value || '').trim();
+  if (!materiDipilih) return;
 
-    var tps = getTps();
-    var cocok = tps.find(function(t) {
-      return t.materi.toLowerCase() === materiDipilih.toLowerCase() && (!babDipilih || t.bab.toLowerCase() === babDipilih.toLowerCase());
-    }) || tps.find(function(t) {
-      return t.materi.toLowerCase().indexOf(materiDipilih.toLowerCase()) > -1 || materiDipilih.toLowerCase().indexOf(t.materi.toLowerCase()) > -1;
-    });
+  var mLow = materiDipilih.toLowerCase();
+  var bLow = babDipilih.toLowerCase();
+  var tps = getTps() || [];
 
-    if (cocok) {
-      document.getElementById('f-atp-kode').value = cocok.kode;
-      document.getElementById('f-atp-elemen').value = cocok.elemen;
-      document.getElementById('f-atp-tp').value = cocok.tp;
-      document.getElementById('f-atp-waktu').value = cocok.jp + ' JP';
+  var cocok = tps.find(function(t) {
+    var tm = String(t.materi || '').trim().toLowerCase();
+    var tb = String(t.bab || '').trim().toLowerCase();
+    return tm === mLow && (!bLow || tb === bLow);
+  }) || tps.find(function(t) {
+    var tm = String(t.materi || '').trim().toLowerCase();
+    var tb = String(t.bab || '').trim().toLowerCase();
+    var babCocok = !bLow || tb === bLow || tb.indexOf(bLow) > -1 || bLow.indexOf(tb) > -1;
+    return babCocok && tm && (tm.indexOf(mLow) > -1 || mLow.indexOf(tm) > -1);
+  }) || tps.find(function(t) {
+    var tm = String(t.materi || '').trim().toLowerCase();
+    return tm && (tm.indexOf(mLow) > -1 || mLow.indexOf(tm) > -1);
+  }) || (bLow ? tps.find(function(t) {
+    var tb = String(t.bab || '').trim().toLowerCase();
+    return tb === bLow;
+  }) : null);
+
+  if (cocok) {
+    var elKode = document.getElementById('f-atp-kode');
+    var elElemen = document.getElementById('f-atp-elemen');
+    var elTp = document.getElementById('f-atp-tp');
+    var elWaktu = document.getElementById('f-atp-waktu');
+
+    if (elKode && cocok.kode) elKode.value = cocok.kode;
+    if (elElemen && cocok.elemen) elElemen.value = cocok.elemen;
+    if (elTp && cocok.tp) elTp.value = cocok.tp;
+    if (elWaktu && cocok.jp) {
+      var jpStr = String(cocok.jp).trim();
+      elWaktu.value = /jp/i.test(jpStr) ? jpStr : (jpStr + ' JP');
+    }
+    if (typeof showToast === 'function') {
       showToast('Tujuan Pembelajaran (TP) otomatis terisi dari Analisis CP!');
     }
-  };
+  }
+};
 
   window.openATPModal = function(id) {
     id = id || null;
