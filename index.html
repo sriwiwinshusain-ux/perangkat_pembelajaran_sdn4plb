@@ -3820,10 +3820,10 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
        -------------------------------------------------------------------------- */
     function viewMateriAjar() {
       const { kelas, semester, mapel } = appState.context;
-       const daftarBabBank = (appState.bankBab || []).filter(b =>
-    String(b.kelas || '').trim() === String(kelas || '').trim() &&
-    String(b.semester || '').trim() === String(semester || '').trim() &&
-    String(b.mapel || '').trim() === String(mapel || '').trim()
+       const daftarBabBank = (typeof getBabBank === 'function' ? getBabBank() : []).filter(b =>
+    (!b.kelas || String(b.kelas).trim() === String(kelas).trim()) &&
+    (!b.semester || String(b.semester).trim() === String(semester).trim()) &&
+    (!b.mapel || String(b.mapel).trim() === String(mapel).trim())
   );
 
   const listBabUnik = [];
