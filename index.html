@@ -2707,54 +2707,59 @@
     /* --------------------------------------------------------------------------
        MENU 4: ANALISIS CP (OTOMATIS DARI MENU CP, GURU HANYA MENGETIK TP)
        -------------------------------------------------------------------------- */
-    function viewAnalisisCP() {
-      const { kelas, semester, mapel } = appState.context;
-      const fase = kelasToFase(kelas);
-      const list = appState.analisisList.filter(a => a.kelas === kelas && a.semester === semester && a.mapel === mapel);
-      return `
-        <div class="card">
-          <div class="card-header no-print">
-            <div class="card-title">Analisis Capaian Pembelajaran • Kelas ${kelas} (${fase}) • Semester ${semester}</div>
-            <button type="button" class="btn btn-green" onclick="openAnalisisCPModal()">+ Tambah Analisis CP</button>
-          </div>
+ function viewAnalisisCP() {
+  const c = appState.context || {};
+  const fase = c.fase || kelasToFase(c.kelas || '5');
+  const mapel = c.mapel || '';
+  const list = (appState.analisisList || [])
+    .filter(a => kelasToFase(a.kelas) === fase && a.mapel === mapel)
+    .sort((a, b) => (String(a.kelas) + '-' + String(a.semester)).localeCompare(String(b.kelas) + '-' + String(b.semester)));
+  return `
+    <div class="card">
+      <div class="card-header no-print">
+        <div class="card-title">Analisis Capaian Pembelajaran • ${escapeHtml(fase)} • Semester 1 &amp; 2</div>
+        <button type="button" class="btn btn-green" onclick="openAnalisisCPModal()">+ Tambah Analisis CP</button>
+      </div>
 
-          ${renderKopSurat(`ANALISIS CAPAIAN PEMBELAJARAN (CP) MENJADI TUJUAN PEMBELAJARAN`, `Mata Pelajaran: ${mapel} • Kelas ${kelas} (${fase}) • Semester ${semester} • TA ${appState.context.ta}`)}
+      ${renderKopSurat(`ANALISIS CAPAIAN PEMBELAJARAN (CP) MENJADI TUJUAN PEMBELAJARAN (TP)`, `Mata Pelajaran: ${mapel} • ${fase} • Semester 1 & 2 • TA ${c.tahunAjaran || ''}`)}
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:45px;">No</th>
-                  <th style="width:150px;">Elemen</th>
-                  <th>CP Elemen</th>
-                  <th style="width:180px;">Kompetensi</th>
-                  <th style="width:180px;">Konten Materi</th>
-                  <th>Tujuan Pembelajaran (TP)</th>
-                  <th class="no-print" style="width:125px;">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${list.length ? list.map((item, idx) => `
-                  <tr>
-                    <td>${idx + 1}</td>
-                    <td><strong>${escapeHtml(item.elemen)}</strong></td>
-                    <td>${escapeHtml(item.cpElemen)}</td>
-                    <td>${escapeHtml(item.kompetensi)}</td>
-                    <td>${escapeHtml(item.kontenMateri)}</td>
-                    <td><strong>${escapeHtml(item.tujuanPembelajaran)}</strong></td>
-                    <td class="no-print">
-                      <button type="button" class="btn btn-yellow btn-sm" onclick="openAnalisisCPModal('${item.id}')">Edit</button>
-                      <button type="button" class="btn btn-pink btn-sm" onclick="deleteAnalisisCP('${item.id}')">Hapus</button>
-                    </td>
-                  </tr>
-                `).join('') : `<tr><td colspan="7" style="text-align:center;">Belum ada analisis CP pada semester ini. Klik "+ Tambah Analisis CP".</td></tr>`}
-              </tbody>
-            </table>
-          </div>
-          ${renderTandaTangan()}
-        </div>
-      `;
-    }
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:45px;">No</th>
+              <th style="width:95px;">Kelas / Sem</th>
+              <th style="width:140px;">Elemen</th>
+              <th>CP Elemen</th>
+              <th style="width:160px;">Kompetensi</th>
+              <th style="width:160px;">Konten Materi</th>
+              <th>Tujuan Pembelajaran (TP)</th>
+              <th class="no-print" style="width:125px;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.length ? list.map((item, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td><strong>Kelas ${escapeHtml(item.kelas)}</strong><br><small>Sem ${escapeHtml(item.semester)}</small></td>
+                <td><strong>${escapeHtml(item.elemen)}</strong></td>
+                <td>${escapeHtml(item.cpElemen)}</td>
+                <td>${escapeHtml(item.kompetensi)}</td>
+                <td>${escapeHtml(item.kontenMateri)}</td>
+                <td><strong>${escapeHtml(item.tujuanPembelajaran)}</strong></td>
+                <td class="no-print">
+                  <button type="button" class="btn btn-yellow btn-sm" onclick="openAnalisisCPModal('${item.id}')">Edit</button>
+                  <button type="button" class="btn btn-pink btn-sm" onclick="deleteAnalisisCP('${item.id}')">Hapus</button>
+                </td>
+              </tr>
+            `).join('') : `<tr><td colspan="8" style="text-align:center;">Belum ada analisis CP pada ${escapeHtml(fase)} (Semester 1 &amp; 2). Klik "+ Tambah Analisis CP".</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      ${renderTandaTangan()}
+    </div>
+  `;
+}
 
     function openAnalisisCPModal(id = null) {
       const { kelas, mapel } = appState.context;
@@ -5174,6 +5179,105 @@ window.openAnalisisCPModal = function(id) {
     }
     saveState(); closeModal(); renderCurrentMenu(); showToast('Analisis CP disimpan!');
   };
+(function() {
+  function kelasDalamFase(faseStr) {
+    var f = String(faseStr || 'Fase C').trim();
+    if (f === 'Fase A') return ['1', '2'];
+    if (f === 'Fase B') return ['3', '4'];
+    return ['5', '6'];
+  }
+
+  var prevRenderMenu = window.renderCurrentMenu;
+  window.renderCurrentMenu = function() {
+    if (typeof prevRenderMenu === 'function') prevRenderMenu();
+    if (appState.activeMenu === 'analisis_cp') {
+      var elFase = document.getElementById('wrap-ctx-fase');
+      var elKelas = document.getElementById('wrap-ctx-kelas');
+      var elSem = document.getElementById('wrap-ctx-semester');
+      var elMapel = document.getElementById('wrap-ctx-mapel');
+      if (elFase) elFase.classList.remove('hidden');
+      if (elKelas) elKelas.classList.add('hidden');
+      if (elSem) elSem.classList.add('hidden');
+      if (elMapel) elMapel.classList.remove('hidden');
+      var selFase = document.getElementById('ctx-fase');
+      var faseAktif = appState.context.fase || kelasToFase(appState.context.kelas || '5');
+      appState.context.fase = faseAktif;
+      if (selFase) selFase.value = faseAktif;
+    }
+  };
+
+  var prevUpdateCtx = window.updateContext;
+  window.updateContext = function(key, val) {
+    if (key === 'fase') {
+      var daftarKls = kelasDalamFase(val);
+      if (daftarKls.indexOf(String(appState.context.kelas)) === -1) {
+        appState.context.kelas = daftarKls[0];
+        var selKls = document.getElementById('ctx-kelas');
+        if (selKls) selKls.value = daftarKls[0];
+      }
+    }
+    if (typeof prevUpdateCtx === 'function') prevUpdateCtx(key, val);
+  };
+
+  var prevOpenModal = window.openAnalisisCPModal;
+  window.openAnalisisCPModal = function(id) {
+    var ex = id ? (appState.analisisList || []).find(function(x) { return x.id === id; }) : null;
+    if (ex) {
+      appState.context.kelas = String(ex.kelas);
+      appState.context.semester = String(ex.semester);
+    } else if (appState.activeMenu === 'analisis_cp') {
+      var klsFase = kelasDalamFase(appState.context.fase || kelasToFase(appState.context.kelas));
+      if (klsFase.indexOf(String(appState.context.kelas)) === -1) {
+        appState.context.kelas = klsFase[0];
+      }
+    }
+    if (typeof prevOpenModal === 'function') prevOpenModal(id);
+    if (appState.activeMenu === 'analisis_cp') {
+      setTimeout(function() {
+        var elBab = document.getElementById('f-an-bab');
+        if (!elBab || document.getElementById('f-an-kelas')) return;
+        var klsList = kelasDalamFase(appState.context.fase || kelasToFase(appState.context.kelas));
+        var klsCur = String(appState.context.kelas || klsList[0]);
+        var semCur = String(appState.context.semester || '1');
+        var wrapRow = document.createElement('div');
+        wrapRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;';
+        wrapRow.innerHTML =
+          '<div class="form-group" style="margin:0;"><label class="form-label">Target Kelas (' + (appState.context.fase || 'Fase C') + ')</label>' +
+          '<select id="f-an-kelas" class="form-control">' +
+          klsList.map(function(k) { return '<option value="' + k + '"' + (k === klsCur ? ' selected' : '') + '>Kelas ' + k + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="form-group" style="margin:0;"><label class="form-label">Target Semester</label>' +
+          '<select id="f-an-semester" class="form-control">' +
+          '<option value="1"' + (semCur === '1' ? ' selected' : '') + '>Semester 1 (Ganjil)</option>' +
+          '<option value="2"' + (semCur === '2' ? ' selected' : '') + '>Semester 2 (Genap)</option>' +
+          '</select></div>';
+        var parentGroup = elBab.closest('.form-group');
+        if (parentGroup && parentGroup.parentNode) {
+          parentGroup.parentNode.insertBefore(wrapRow, parentGroup);
+        }
+        var reloadBabModal = function() {
+          var kBaru = document.getElementById('f-an-kelas').value;
+          var sBaru = document.getElementById('f-an-semester').value;
+          appState.context.kelas = kBaru;
+          appState.context.semester = sBaru;
+          var babMap = {};
+          (appState.bankBabList || []).filter(function(b) {
+            return String(b.kelas) === kBaru && String(b.semester) === sBaru && b.mapel === appState.context.mapel;
+          }).forEach(function(b) { if (b.bab) babMap[b.bab] = true; });
+          var babs = Object.keys(babMap);
+          elBab.innerHTML = babs.length
+            ? babs.map(function(b) { return '<option value="' + b.replace(/"/g, '&quot;') + '">' + b + '</option>'; }).join('')
+            : '<option value="">-- Belum ada BAB di Kelas ' + kBaru + ' Sem ' + sBaru + ' --</option>';
+          if (typeof renderCheckboxMateriAnalisis === 'function') renderCheckboxMateriAnalisis(elBab.value, '');
+          if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
+          if (typeof updateGabunganMateriAnalisis === 'function') updateGabunganMateriAnalisis(true);
+        };
+        document.getElementById('f-an-kelas').onchange = reloadBabModal;
+        document.getElementById('f-an-semester').onchange = reloadBabModal;
+      }, 30);
+    }
+  };
+})();
 
   window.getTpsGlobal = function(i) { return i === '' ? null : (getTps().slice(parseInt(i,10), parseInt(i,10)+1).pop() || null); };
 
