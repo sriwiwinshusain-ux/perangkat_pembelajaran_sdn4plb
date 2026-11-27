@@ -5013,47 +5013,102 @@
     }
   };
 
-   window.openAnalisisCPModal = function(id) {
-    id = id || null;
-    var c = appState.context, fase = kelasToFase(c.kelas);
-    var cps = appState.cpList.filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
-    var ex = id ? appState.analisisList.find(function(x) { return x.id === id; }) : null;
-    var fCp = ex ? (cps.find(function(x) { return x.elemen === ex.elemen; }) || cps.slice(0,1).pop() || { elemen: ex.elemen, cp: ex.cpElemen }) : (cps.slice(0,1).pop() || { elemen: '', cp: '' });
-    var no = appState.analisisList.filter(function(a) { return a.kelas === c.kelas && a.semester === c.semester && a.mapel === c.mapel; }).length + 1;
+  window.isiOtomatisCpDariBabMateri = function() {
+  var c = appState.context, fase = kelasToFase(c.kelas);
+  var cps = (appState.cpList || []).filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
+  if (!cps.length) return;
 
-    var semuaBank = getBabBank();
-    var daftarBabUnik = [];
-    semuaBank.forEach(function(it) { if (it.bab && !daftarBabUnik.includes(it.bab)) daftarBabUnik.push(it.bab); });
-    if (!daftarBabUnik.length) daftarBabUnik.push('BAB 1');
-    var babAwal = (ex && ex.bab) ? ex.bab : daftarBabUnik.at(0);
-    if (!daftarBabUnik.includes(babAwal)) daftarBabUnik.unshift(babAwal);
+  var elBab = document.getElementById('f-an-bab');
+  var elElemen = document.getElementById('f-an-elemen');
+  var elCp = document.getElementById('f-an-cp');
+  var elKomp = document.getElementById('f-an-komp');
+  var babVal = elBab ? elBab.value.trim().toLowerCase() : '';
+  var materiChks = Array.from(document.querySelectorAll('.chk-an-materi-item:checked')).map(function(el) { return el.value.trim().toLowerCase(); });
 
-    var opsiBabUnik = daftarBabUnik.map(function(b) {
-      return '<option value="' + escapeHtml(b) + '" ' + (b === babAwal ? 'selected' : '') + '>' + escapeHtml(b) + '</option>';
-    }).join('');
+  var semuaBank = getBabBank() || [];
+  var itemCocok = semuaBank.find(function(it) {
+    var b = String(it.bab || '').trim().toLowerCase();
+    var m = String(it.materi || '').trim().toLowerCase();
+    return (!babVal || b === babVal) && materiChks.some(function(mc) { return m === mc || m.indexOf(mc) > -1 || mc.indexOf(m) > -1; });
+  }) || semuaBank.find(function(it) {
+    return String(it.bab || '').trim().toLowerCase() === babVal;
+  });
 
-    openModal(ex ? 'Edit Analisis CP' : 'Tambah Analisis CP',
-      '<form onsubmit="saveAnalisisCP(event,\'' + (id || '') + '\')">' +
-        '<div class="grid-2">' +
-          '<div class="form-group"><label class="form-label">Pilih BAB</label><select id="f-an-bab" class="form-control" onchange="renderCheckboxMateriAnalisis(this.value, \'\')">' + opsiBabUnik + '</select></div>' +
-          '<div class="form-group"><label class="form-label">Kode TP & Alokasi JP</label><div style="display:flex;gap:6px;"><input type="text" id="f-an-kodetp" class="form-control" value="' + escapeHtml(ex && ex.kodeTp ? ex.kodeTp : ('TP.' + c.kelas + '.' + c.semester + '.' + no)) + '" required /><input type="number" min="1" id="f-an-jp" class="form-control" style="width:75px;" value="' + (ex && ex.jp ? ex.jp : 4) + '" required /></div></div>' +
-        '</div>' +
-        '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #16a34a;">' +
-          '<label class="form-label">Centang Konten Materi dari BAB Ini (Bisa Pilih 1 atau Gabung Beberapa Materi)</label>' +
-          '<div id="box-checklist-materi-an" style="max-height:140px;overflow-y:auto;margin-bottom:8px;"></div>' +
-          '<label class="form-label" style="font-size:11px;color:#14532d;">Hasil Gabungan Konten Materi (Otomatis Terisi, Bisa Diedit):</label>' +
-          '<input type="text" id="f-an-materi-gabung" class="form-control" value="' + escapeHtml(ex ? ex.kontenMateri : '') + '" required />' +
-        '</div>' +
-        '<div class="form-group"><label class="form-label">Pilih CP</label><select id="f-an-cp-select" class="form-control" onchange="onSelectCPForAnalisis(this.value)">' + cps.map(function(x) { return '<option value="' + x.id + '" ' + (fCp.elemen === x.elemen ? 'selected' : '') + '>' + escapeHtml(x.elemen) + '</option>'; }).join('') + '</select></div>' +
-        '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(ex ? ex.elemen : fCp.elemen) + '" readonly /></div>' +
-        '<div class="form-group"><label class="form-label">CP Elemen</label><textarea id="f-an-cp" rows="2" class="form-control" readonly>' + escapeHtml(ex ? ex.cpElemen : fCp.cp) + '</textarea></div>' +
-        '<div class="form-group"><label class="form-label">Kompetensi</label><input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(ex ? ex.kompetensi : ('Memahami ' + fCp.elemen)) + '" /></div>' +
-        '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-an-tp" rows="3" class="form-control" required>' + escapeHtml(ex ? ex.tujuanPembelajaran : '') + '</textarea></div>' +
-        '<button type="submit" class="btn btn-green btn-block">Simpan Analisis CP</button>' +
-      '</form>'
-    );
-    setTimeout(function() { renderCheckboxMateriAnalisis(babAwal, ex ? ex.kontenMateri : ''); }, 20);
-  };
+  var cpCocok = null;
+  if (itemCocok && itemCocok.elemen) {
+    var elTarget = String(itemCocok.elemen).trim().toLowerCase();
+    cpCocok = cps.find(function(x) { return String(x.elemen || '').trim().toLowerCase() === elTarget; }) ||
+              cps.find(function(x) { return String(x.elemen || '').trim().toLowerCase().indexOf(elTarget) > -1; });
+  }
+  if (!cpCocok) {
+    var kataKunci = (materiChks.join(' ') + ' ' + babVal).trim();
+    var daftarKata = kataKunci.split(/[\s,.\-()/]+/).filter(function(w) { return w.length > 3 && ['dalam','pada','yang','untuk','dengan','dari','seni','rupa'].indexOf(w) === -1; });
+    var skorTertinggi = 0;
+    cps.forEach(function(x) {
+      var teksGabung = (String(x.elemen || '') + ' ' + String(x.cp || '')).toLowerCase();
+      var skor = 0;
+      daftarKata.forEach(function(k) { if (teksGabung.indexOf(k) > -1) skor++; });
+      if (skor > skorTertinggi) { skorTertinggi = skor; cpCocok = x; }
+    });
+  }
+  if (!cpCocok) cpCocok = cps[0];
+
+  if (cpCocok) {
+    if (elElemen) elElemen.value = cpCocok.elemen || '';
+    if (elCp) elCp.value = cpCocok.cp || '';
+    if (elKomp) {
+      var mKomp = String(cpCocok.cp || '').match(/(menjelaskan|mengidentifikasi|menganalisis|mempraktikkan|menerapkan|mengenal|memahami|mengeksplorasi|menciptakan|merefleksikan|mengapresiasi|menggambar|membuat|menyajikan)/i);
+      elKomp.value = mKomp ? (mKomp[1].charAt(0).toUpperCase() + mKomp[1].slice(1).toLowerCase()) : ('Memahami ' + (cpCocok.elemen || ''));
+    }
+  }
+};
+
+window.openAnalisisCPModal = function(id) {
+  id = id || null;
+  var c = appState.context, fase = kelasToFase(c.kelas);
+  var cps = appState.cpList.filter(function(x) { return x.fase === fase && x.mapel === c.mapel; });
+  var ex = id ? appState.analisisList.find(function(x) { return x.id === id; }) : null;
+  var fCp = ex ? (cps.find(function(x) { return x.elemen === ex.elemen; }) || cps.slice(0,1).pop() || { elemen:'', cp:'' }) : (cps.slice(0,1).pop() || { elemen:'', cp:'' });
+  var no = appState.analisisList.filter(function(a) { return a.kelas === c.kelas && a.semester === c.semester && a.mapel === c.mapel; }).length + 1;
+
+  var semuaBank = getBabBank();
+  var daftarBabUnik = [];
+  semuaBank.forEach(function(it) { if (it.bab && !daftarBabUnik.includes(it.bab)) daftarBabUnik.push(it.bab); });
+  if (!daftarBabUnik.length) daftarBabUnik.push('BAB 1');
+  var babAwal = (ex && ex.bab) ? ex.bab : daftarBabUnik.at(0);
+  if (!daftarBabUnik.includes(babAwal)) daftarBabUnik.unshift(babAwal);
+
+  var opsiBabUnik = daftarBabUnik.map(function(b) {
+    return '<option value="' + escapeHtml(b) + '" ' + (b === babAwal ? 'selected' : '') + '>' + escapeHtml(b) + '</option>';
+  }).join('');
+
+  openModal(ex ? 'Edit Analisis CP' : 'Tambah Analisis CP',
+    '<form onsubmit="saveAnalisisCP(event,\'' + (id || '') + '\')">' +
+      '<div class="grid-2">' +
+        '<div class="form-group"><label class="form-label">Pilih BAB</label><select id="f-an-bab" class="form-control" onchange="renderCheckboxMateriAnalisis(this.value, \'\'); isiOtomatisCpDariBabMateri(); updateGabunganMateriAnalisis(true);">' + opsiBabUnik + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Kode TP & Alokasi JP</label><div style="display:flex;gap:6px;"><input type="text" id="f-an-kode" class="form-control" value="' + escapeHtml(ex ? ex.kode : ('TP.' + no)) + '"><input type="number" id="f-an-jp" class="form-control" value="' + (ex ? ex.jp : 4) + '" style="width:75px;"></div></div>' +
+      '</div>' +
+      '<div class="form-group" style="background:#f0fdf4;padding:10px;border-radius:8px;border:1px solid #bbf7d0;" onchange="isiOtomatisCpDariBabMateri(); updateGabunganMateriAnalisis(true);">' +
+        '<label class="form-label">Centang Konten Materi dari BAB Ini (Bisa Pilih 1 atau Gabung Beberapa Materi)</label>' +
+        '<div id="box-checklist-materi-an" style="max-height:140px;overflow-y:auto;margin-bottom:8px;"></div>' +
+        '<label class="form-label" style="font-size:11px;color:#14532d;">Hasil Gabungan Konten Materi (Otomatis Terisi, Bisa Diedit):</label>' +
+        '<input type="text" id="f-an-materi-gabung" class="form-control" value="' + escapeHtml(ex ? (ex.kontenMateri || ex.materi) : '') + '">' +
+      '</div>' +
+      '<div class="form-group"><label class="form-label">Elemen</label><input type="text" id="f-an-elemen" class="form-control" value="' + escapeHtml(ex ? ex.elemen : fCp.elemen) + '" required></div>' +
+      '<div class="form-group"><label class="form-label">CP Elemen</label><textarea id="f-an-cp" class="form-control" rows="3" required>' + escapeHtml(ex ? ex.cp : fCp.cp) + '</textarea></div>' +
+      '<div class="form-group"><label class="form-label">Kompetensi</label><input type="text" id="f-an-komp" class="form-control" value="' + escapeHtml(ex ? ex.kompetensi : '') + '" required></div>' +
+      '<div class="form-group"><label class="form-label">Tujuan Pembelajaran (TP)</label><textarea id="f-an-tp" rows="3" class="form-control" required>' + escapeHtml(ex ? ex.tp : '') + '</textarea></div>' +
+      '<button type="submit" class="btn btn-green btn-block">Simpan Analisis CP</button>' +
+    '</form>'
+  );
+  setTimeout(function() {
+    renderCheckboxMateriAnalisis(babAwal, ex ? ex.kontenMateri : '');
+    if (!ex) {
+      isiOtomatisCpDariBabMateri();
+      updateGabunganMateriAnalisis(true);
+    }
+  }, 20);
+};
 
   window.saveAnalisisCP = function(e, id) {
     e.preventDefault();
