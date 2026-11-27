@@ -3820,28 +3820,72 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
        -------------------------------------------------------------------------- */
     function viewMateriAjar() {
       const { kelas, semester, mapel } = appState.context;
-      const atps = appState.atpList.filter(a => a.kelas === kelas && a.semester === semester && a.mapel === mapel);
-      const selectedId = appState.selectedMateriAtpId || (atps[0] ? atps[0].id : '');
-      const currentAtp = atps.find(a => a.id === selectedId) || atps[0] || {
-        kodeTp: `TP.${kelas}.${semester}.1`,
-        elemen: 'Konsep Dasar',
-        lingkupMateri: `Materi Pokok ${mapel} Kelas ${kelas}`,
-        tujuanPembelajaran: `Peserta didik mampu memahami dan menerapkan konsep ${mapel} dalam kehidupan sehari-hari.`
-      };
+       const daftarBabBank = (appState.bankBab || []).filter(b =>
+    String(b.kelas || '').trim() === String(kelas || '').trim() &&
+    String(b.semester || '').trim() === String(semester || '').trim() &&
+    String(b.mapel || '').trim() === String(mapel || '').trim()
+  );
 
-      return `
-        <div class="card">
-          <div class="card-header no-print">
-            <div class="card-title">Bahan / Materi Ajar Otomatis Lengkap</div>
-            <button type="button" class="btn btn-yellow" onclick="window.print()">Cetak Materi Ajar</button>
-          </div>
+  const listBabUnik = [];
+  daftarBabBank.forEach(b => {
+    const namaBab = String(b.bab || '').trim();
+    if (namaBab && !listBabUnik.includes(namaBab)) listBabUnik.push(namaBab);
+  });
 
-          <div class="no-print" style="background:#f0fdf4;padding:14px;border-radius:12px;border:1.5px solid #16a34a;margin-bottom:16px;">
-            <label class="form-label">Pilih Tujuan Pembelajaran & Lingkup Materi</label>
-            <select class="form-control" onchange="appState.selectedMateriAtpId=this.value; saveState(); renderCurrentMenu();">
-              ${atps.map(a => `<option value="${a.id}" ${a.id === currentAtp.id ? 'selected' : ''}>[${escapeHtml(a.kodeTp)}] ${escapeHtml(a.lingkupMateri)}</option>`).join('')}
-            </select>
-          </div>
+  if (!listBabUnik.length) {
+    (appState.atpList || []).filter(a =>
+      String(a.kelas || '').trim() === String(kelas || '').trim() &&
+      String(a.semester || '').trim() === String(semester || '').trim() &&
+      String(a.mapel || '').trim() === String(mapel || '').trim()
+    ).forEach(a => {
+      const mBab = String(a.bab || a.lingkupMateri || '').match(/^(BAB\s*\d+[^-–:]*)/i);
+      const namaBab = mBab ? mBab.at(1).trim() : String(a.bab || a.lingkupMateri || '').trim();
+      if (namaBab && !listBabUnik.includes(namaBab)) listBabUnik.push(namaBab);
+    });
+  }
+
+  if (!listBabUnik.length) listBabUnik.push('BAB 1');
+
+  const babTerpilih = listBabUnik.includes(appState.selectedMateriBab) ? appState.selectedMateriBab : listBabUnik.at(0);
+  const materiDalamBab = daftarBabBank.filter(b => String(b.bab || '').trim() === babTerpilih).map(b => String(b.materi || '').trim()).filter(Boolean);
+  const atpDalamBab = (appState.atpList || []).filter(a =>
+    String(a.kelas || '').trim() === String(kelas || '').trim() &&
+    String(a.semester || '').trim() === String(semester || '').trim() &&
+    String(a.mapel || '').trim() === String(mapel || '').trim() &&
+    (String(a.bab || '').trim() === babTerpilih || String(a.lingkupMateri || '').toLowerCase().indexOf(babTerpilih.toLowerCase()) === 0)
+  );
+
+  const pertamaAtp = atpDalamBab.at(0) || {};
+  const gabungMateri = materiDalamBab.length ? materiDalamBab.join(', ') : (pertamaAtp.lingkupMateri || babTerpilih);
+  const gabungTp = atpDalamBab.length
+    ? atpDalamBab.map(a => `[${a.kodeTp}] ${a.tujuanPembelajaran}`).join('; ')
+    : (pertamaAtp.tujuanPembelajaran || `Peserta didik mampu memahami dan mempraktikkan materi pada ${babTerpilih}.`);
+
+  const currentAtp = {
+    id: pertamaAtp.id || 'bab_aktif',
+    bab: babTerpilih,
+    kodeTp: atpDalamBab.length ? atpDalamBab.map(a => a.kodeTp).join(', ') : `TP.${kelas}.${semester}.1`,
+    elemen: pertamaAtp.elemen || 'Pemahaman & Keterampilan',
+    lingkupMateri: `${babTerpilih}${gabungMateri && gabungMateri.toLowerCase() !== babTerpilih.toLowerCase() ? ' — ' + gabungMateri : ''}`,
+    tujuanPembelajaran: gabungTp
+  };
+
+  return `
+    <div class="card">
+      <div class="card-header no-print">
+        <div class="card-title">Bahan / Materi Ajar Otomatis Lengkap</div>
+        <button type="button" class="btn btn-yellow" onclick="window.print()">Cetak Materi Ajar</button>
+      </div>
+      <div class="no-print" style="background:#f0fdf4;padding:14px;border-radius:12px;border:1px solid #bbf7d0;margin-bottom:14px;">
+        <label class="form-label">Pilih BAB (Sesuai Data Bank BAB &amp; Materi)</label>
+        <select class="form-control" onchange="appState.selectedMateriBab=this.value; if(typeof saveState==='function') saveState(); renderCurrentMenu();">
+          ${listBabUnik.map(namaBab => {
+            const subMat = daftarBabBank.filter(b => String(b.bab || '').trim() === namaBab).map(b => String(b.materi || '').trim()).filter(Boolean);
+            const labelOpsi = subMat.length ? `${namaBab} (${subMat.join(', ')})` : namaBab;
+            return `<option value="${escapeHtml(namaBab)}" ${namaBab === babTerpilih ? 'selected' : ''}>${escapeHtml(labelOpsi)}</option>`;
+          }).join('')}
+        </select>
+      </div>
        <div class="no-print" style="background:#eff6ff;padding:14px;border-radius:12px;border:1.5px solid #2563eb;margin-bottom:14px;">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
         <div>
