@@ -3910,51 +3910,82 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
 
           ${renderKopSurat(`BAHAN AJAR PESERTA DIDIK (MATERI LENGKAP)`, `Mata Pelajaran: ${mapel} • Kelas ${kelas} • Semester ${semester} • TA ${appState.context.ta}`)}
 
-                ${(function() {
+                    ${(function() {
         const rawPdf = typeof ambilMateriPdfSesuaiBab === 'function' ? ambilMateriPdfSesuaiBab(kelas, mapel, currentAtp.bab, currentAtp.lingkupMateri) : '';
-        const bersihPdf = String(rawPdf || '').replace(/^BAB\s*(?:[1-9]|1[0-5]|[IVX]+)\s*[:.\-–]?\s*/i, '').replace(/\s+/g, ' ').trim();
-        const kalimatList = bersihPdf
-          ? bersihPdf.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length >= 25 && s.length <= 240 && !/^(gambar|tabel|sumber|halaman|ayo|mari|coba)\b/i.test(s))
+        const bersihPdf = String(rawPdf || '')
+          .replace(/\|[^.!?\n]*\d+\s*/g, ' ')
+          .replace(/^BAB\s*(?:[1-9]|1[0-5]|[IVX]+)\s*[:.\-–]?\s*/i, '')
+          .replace(/\b(?:Yuk|Mari|Ayo),?\s+baca[^.!?]*[.!?]/gi, ' ')
+          .replace(/\b(?:pembahasan mendalam di bawah ini|perhatikan gambar berikut|amati gambar|daftar isi)[^.!?]*[.!?]/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const kataKunciSub = materiDalamBab.join(' ').toLowerCase().split(/[\s,.\-–()]+/).filter(w => w.length >= 4 && !/^(eksplorasi|gerakan|aktivitas|materi|pada|dan|yang|untuk)$/.test(w));
+
+        const semuaKalimat = bersihPdf
+          ? bersihPdf.split(/(?<=[.!?])\s+/)
+              .map(s => s.replace(/^[|\-–•\d\s]+/, '').trim())
+              .filter(s => s.length >= 35 && s.length <= 200 && !/[|]/.test(s) && !/^(gambar|tabel|sumber|halaman|ayo|mari|coba|yuk|bab|unit)\b/i.test(s) && !/\b\d{2,}\b/.test(s))
           : [];
-        const poinRangkuman = kalimatList.slice(0, 5);
 
-        const buatIsian = (kal, idx) => {
-          const kataList = kal.replace(/[.,!?;:()"']/g, '').split(/\s+/);
-          let targetIdx = -1;
-          for (let i = kataList.length - 1; i >= 1; i--) {
-            if (kataList.at(i).length >= 5 && !/^(adalah|dengan|untuk|dalam|secara|bahwa|yaitu|dapat|harus|tidak|merupakan|seperti|melalui|ketika|setelah|sebelum)$/i.test(kataList.at(i))) {
-              targetIdx = i;
-              break;
-            }
-          }
-          if (targetIdx === -1) {
-            return {
-              tanya: `Pada materi <strong>${escapeHtml(currentAtp.bab)}</strong>, kegiatan utama yang dipelajari peserta didik adalah ....`,
-              jawab: escapeHtml(currentAtp.lingkupMateri)
-            };
-          }
-          const kunci = kataList.at(targetIdx);
-          const soalTeks = kal.replace(new RegExp('\\b' + kunci.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'), '....................');
-          return { tanya: escapeHtml(soalTeks), jawab: escapeHtml(kunci) };
-        };
+        const kalimatRelevan = kataKunciSub.length
+          ? semuaKalimat.filter(s => kataKunciSub.some(kw => s.toLowerCase().indexOf(kw) !== -1))
+          : semuaKalimat;
 
-        const isianItems = [0, 1, 2].map(i => {
-          if (kalimatList.at(i)) return buatIsian(kalimatList.at(i), i);
-          const sub = materiDalamBab.at(i) || currentAtp.lingkupMateri;
-          return {
-            tanya: `Salah satu materi pokok yang dipelajari pada <strong>${escapeHtml(currentAtp.bab)}</strong> adalah ....`,
-            jawab: escapeHtml(sub)
-          };
+        const sumberKalimat = kalimatRelevan.length >= 2 ? kalimatRelevan : semuaKalimat;
+
+        const poinRangkuman = [];
+        if (materiDalamBab.length) {
+          poinRangkuman.push(`Pada ${currentAtp.bab}, peserta didik mempelajari pokok materi meliputi: ${materiDalamBab.join(', ')}.`);
+        }
+        sumberKalimat.slice(0, 4).forEach(k => {
+          if (!poinRangkuman.includes(k)) poinRangkuman.push(k);
         });
+
+        const sub1 = materiDalamBab.at(0) || currentAtp.lingkupMateri;
+        const sub2 = materiDalamBab.at(1) || sub1;
+        const sub3 = materiDalamBab.at(2) || sub1;
+
+        const kalDefinisi = sumberKalimat.find(k => /\b(adalah|merupakan|yaitu|bertujuan untuk|berfungsi untuk)\b/i.test(k));
+        let soalIsian1 = {
+          tanya: `Pokok bahasan utama yang dipelajari peserta didik pada <strong>${escapeHtml(currentAtp.bab)}</strong> adalah ....`,
+          jawab: escapeHtml(currentAtp.bab.replace(/^BAB\s*\d+\s*[:.\-–]?\s*/i, '') || sub1)
+        };
+        if (kalDefinisi) {
+          const m = kalDefinisi.replace(/[.!?]+$/, '').match(/^(.+?\b(?:adalah|merupakan|yaitu|bertujuan untuk|berfungsi untuk))\s+(.+)$/i);
+          if (m && m.at(2).split(/\s+/).length >= 2 && m.at(2).split(/\s+/).length <= 6) {
+            soalIsian1 = { tanya: `${escapeHtml(m.at(1))} ....`, jawab: escapeHtml(m.at(2)) };
+          }
+        }
+
+        const isianItems = [
+          soalIsian1,
+          {
+            tanya: `Salah satu contoh keterampilan atau materi yang dipelajari pada <strong>${escapeHtml(sub1)}</strong> adalah ....`,
+            jawab: escapeHtml(sub2 !== sub1 ? sub2 : sub1)
+          },
+          {
+            tanya: `Saat mempraktikkan kegiatan <strong>${escapeHtml(sub3)}</strong> di sekolah, setiap peserta didik harus mengutamakan sikap disiplin dan ....`,
+            jawab: 'keselamatan (sportivitas)'
+          }
+        ];
 
         const uraianItems = [
           {
-            tanya: `Jelaskan dengan bahasamu sendiri pengertian dan hal penting yang kamu pelajari pada materi <strong>${escapeHtml(currentAtp.lingkupMateri)}</strong>!`,
-            jawab: escapeHtml(kalimatList.slice(0, 2).join(' ') || `Materi ${currentAtp.lingkupMateri} membahas konsep dasar dan praktik yang harus dikuasai siswa pada ${currentAtp.bab}.`)
+            tanya: `Jelaskan apa saja materi atau keterampilan yang kamu pelajari pada <strong>${escapeHtml(currentAtp.bab)}</strong>!`,
+            jawab: escapeHtml(
+              materiDalamBab.length
+                ? `Materi yang dipelajari pada ${currentAtp.bab} meliputi ${materiDalamBab.join(', ')}.`
+                : (sumberKalimat.slice(0, 2).join(' ') || `Memahami konsep dasar dan mempraktikkan keterampilan pada ${currentAtp.lingkupMateri} dengan benar.`)
+            )
           },
           {
-            tanya: `Sebutkan contoh kegiatan atau cara mempraktikkan <strong>${escapeHtml(materiDalamBab.at(0) || currentAtp.lingkupMateri)}</strong> dengan benar dan aman!`,
-            jawab: escapeHtml(kalimatList.slice(2, 4).join(' ') || `Dilakukan sesuai langkah-langkah yang benar, tertib, disiplin, dan memperhatikan keselamatan bersama.`)
+            tanya: `Bagaimana cara melakukan atau mempraktikkan <strong>${escapeHtml(sub1)}</strong> dengan baik dan aman saat pelajaran berlangsung?`,
+            jawab: escapeHtml(
+              sumberKalimat.at(0)
+                ? `${sumberKalimat.at(0)} Selain itu, dilakukan dengan pemanasan terlebih dahulu, mengikuti petunjuk guru, dan menjaga keselamatan.`
+                : `Dilakukan secara bertahap sesuai petunjuk guru, diawali pemanasan, menjaga ketertiban, serta memperhatikan keselamatan diri dan teman.`
+            )
           }
         ];
 
