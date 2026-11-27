@@ -6144,11 +6144,22 @@ window.generateSoalDenganGemini = async function(mode) {
   if (st) st.textContent = '⏳ Gemini AI sedang menyusun soal sesuai Buku Siswa & TP Anda (5-15 detik)...';
 
     try {
-    var models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite'];
+        var models = ['gemini-3.8-flash', 'gemini-3.8-pro', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+    try {
+      var listRes = await fetch('https://generativelanguage.' + 'googleapis.com' + '/v1beta/models?key=' + encodeURIComponent(apiKey));
+      var listJson = await listRes.json();
+      if (listRes.ok && Array.isArray(listJson.models)) {
+        var validModels = listJson.models
+          .filter(function(m) { return Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.indexOf('generateContent') !== -1 && /gemini/i.test(m.name); })
+          .map(function(m) { return String(m.name).replace(/^models\//, ''); });
+        if (validModels.length) models = validModels;
+      }
+    } catch (eList) {}
+
     var rawOut = '';
     var lastErr = '';
     for (var m = 0; m < models.length; m++) {
-      if (m > 0 && st) st.textContent = '⏳ Server utama sibuk, mencoba model cadangan ' + models.at(m) + '...';
+      if (m > 0 && st) st.textContent = '⏳ Mencoba model alternatif (' + models.at(m) + ')...';
       var endpoint = 'https://generativelanguage.' + 'googleapis.com' + '/v1beta/models/' + models.at(m) + ':generateContent?key=' + encodeURIComponent(apiKey);
       var res = await fetch(endpoint, {
         method: 'POST',
@@ -6168,9 +6179,7 @@ window.generateSoalDenganGemini = async function(mode) {
     if (!rawOut) throw new Error(lastErr);
     var parsed = JSON.parse(rawOut);
 
-    var parsed = JSON.parse(rawOut);
-
-    if (!appState.geminiAsesmenCache) appState.geminiAsesmenCache = {};
+        if (!appState.geminiAsesmenCache) appState.geminiAsesmenCache = {};
     var cacheKey = mode + '_' + kelas + '_' + semester + '_' + mapel;
     appState.geminiAsesmenCache[cacheKey] = parsed;
     if (typeof saveState === 'function') saveState();
