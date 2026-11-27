@@ -3968,7 +3968,21 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
 
     function viewAsesmen(mode) {
       const { kelas, semester, mapel } = appState.context;
-      const cfg = appState.asesmenConfig;
+       if (!appState.asesmenConfigByMode || typeof appState.asesmenConfigByMode !== 'object') {
+    const baseCfg = appState.asesmenConfig || { pg: 10, pgkMcma: 2, pgkKategori: 2, isian: 3, uraian: 2, l1: 8, l2: 7, l3: 4 };
+    appState.asesmenConfigByMode = {
+      tp: Object.assign({}, baseCfg, { pg: 5, pgkMcma: 1, pgkKategori: 1, isian: 2, uraian: 1, l1: 4, l2: 4, l3: 2 }),
+      bab: Object.assign({}, baseCfg, { pg: 10, pgkMcma: 2, pgkKategori: 2, isian: 4, uraian: 2, l1: 8, l2: 8, l3: 4 }),
+      sas: Object.assign({}, baseCfg)
+    };
+  }
+  const modeKey = (mode === 'tp' || mode === 'bab' || mode === 'sas') ? mode : 'sas';
+  if (!appState.asesmenConfigByMode[modeKey]) {
+    appState.asesmenConfigByMode[modeKey] = Object.assign({}, appState.asesmenConfig);
+  }
+  appState.asesmenConfig = appState.asesmenConfigByMode[modeKey];
+  const cfg = appState.asesmenConfig;
+
     const klsAktif = String(kelas || '').trim();
   const semAktif = String(semester || '').trim();
   const mapelAktif = String(mapel || '').trim();
