@@ -3963,7 +3963,40 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
     function viewAsesmen(mode) {
       const { kelas, semester, mapel } = appState.context;
       const cfg = appState.asesmenConfig;
-      const atps = appState.atpList.filter(a => a.kelas === kelas && a.semester === semester && a.mapel === mapel);
+        const faseAktifAsesmen = typeof kelasToFase === 'function' ? kelasToFase(kelas) : (appState.context.fase || 'Fase C');
+  const sumberAtp = (appState.atpList || []).filter(a => {
+    const fItem = typeof kelasToFase === 'function' ? kelasToFase(a.kelas) : faseAktifAsesmen;
+    return fItem === faseAktifAsesmen && String(a.mapel || '').trim() === String(mapel || '').trim();
+  });
+  const sumberAnalisis = [];
+  (appState.analisisList || []).filter(a => {
+    const fItem = typeof kelasToFase === 'function' ? kelasToFase(a.kelas) : faseAktifAsesmen;
+    return fItem === faseAktifAsesmen && String(a.mapel || '').trim() === String(mapel || '').trim();
+  }).forEach(a => {
+    const rawTp = String(a.tujuanPembelajaran || '').trim();
+    const barisTp = rawTp ? rawTp.split(/\r?\n+/).map(s => s.trim()).filter(Boolean) : [''];
+    barisTp.forEach((teks, idx) => {
+      let kode = a.kodeTp || ('TP.' + (a.kelas || kelas) + '.' + (a.semester || semester) + '.' + (idx + 1));
+      let isiTp = teks;
+      const mKode = teks.match(/^([A-Za-z0-9._-]+)\s*[:\-]\s*(.+)$/);
+      if (mKode && /tp/i.test(mKode[1])) {
+        kode = mKode[1];
+        isiTp = mKode[2].trim();
+      }
+      sumberAnalisis.push({
+        id: a.id + '_' + idx,
+        kelas: a.kelas || kelas,
+        semester: a.semester || semester,
+        mapel: a.mapel || mapel,
+        bab: a.bab || '',
+        lingkupMateri: (a.bab ? a.bab + ' - ' : '') + (a.kontenMateri || ''),
+        elemen: a.elemen || '',
+        kodeTp: kode,
+        tujuanPembelajaran: isiTp
+      });
+    });
+  });
+  const atps = sumberAtp.length ? sumberAtp : sumberAnalisis;
 
       let titleDoc = 'ASESMEN SUMATIF AKHIR TUJUAN PEMBELAJARAN (TP)';
       if (mode === 'bab') titleDoc = 'ASESMEN SUMATIF AKHIR MATERI / BAB';
