@@ -6143,21 +6143,31 @@ window.generateSoalDenganGemini = async function(mode) {
   if (btn) btn.disabled = true;
   if (st) st.textContent = '⏳ Gemini AI sedang menyusun soal sesuai Buku Siswa & TP Anda (5-15 detik)...';
 
-  try {
-        var endpoint = 'https://generativelanguage.' + 'googleapis.com'+ '/v1beta/models/gemini-3.8-flash:generateContent?key=' + encodeURIComponent(apiKey);
-    var res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { temperature: 0.7, responseMimeType: 'application/json' }
-      })
-    });
-    var json = await res.json();
-    if (!res.ok || !json.candidates || !json.candidates.at(0)) {
-      throw new Error((json.error && json.error.message) || 'Gagal menghubungi Gemini API. Periksa API Key Anda.');
+    try {
+    var models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite'];
+    var rawOut = '';
+    var lastErr = '';
+    for (var m = 0; m < models.length; m++) {
+      if (m > 0 && st) st.textContent = '⏳ Server utama sibuk, mencoba model cadangan ' + models.at(m) + '...';
+      var endpoint = 'https://generativelanguage.' + 'googleapis.com' + '/v1beta/models/' + models.at(m) + ':generateContent?key=' + encodeURIComponent(apiKey);
+      var res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: { temperature: 0.7, responseMimeType: 'application/json' }
+        })
+      });
+      var json = await res.json();
+      if (res.ok && json.candidates && json.candidates.at(0)) {
+        rawOut = json.candidates.at(0).content.parts.at(0).text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+        break;
+      }
+      lastErr = (json.error && json.error.message) || 'Server Gemini sedang sibuk.';
     }
-    var rawOut = json.candidates.at(0).content.parts.at(0).text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    if (!rawOut) throw new Error(lastErr);
+    var parsed = JSON.parse(rawOut);
+
     var parsed = JSON.parse(rawOut);
 
     if (!appState.geminiAsesmenCache) appState.geminiAsesmenCache = {};
