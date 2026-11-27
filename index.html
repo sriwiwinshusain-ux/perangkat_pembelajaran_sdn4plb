@@ -3842,21 +3842,25 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
               ${atps.map(a => `<option value="${a.id}" ${a.id === currentAtp.id ? 'selected' : ''}>[${escapeHtml(a.kodeTp)}] ${escapeHtml(a.lingkupMateri)}</option>`).join('')}
             </select>
           </div>
-    <div class="no-print" style="background:#eff6ff;padding:14px;border-radius:12px;border:1.5px solid #2563eb;margin-bottom:14px;">
-      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;">
+       <div class="no-print" style="background:#eff6ff;padding:14px;border-radius:12px;border:1.5px solid #2563eb;margin-bottom:14px;">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
         <div>
-          <label class="form-label" style="color:#1e3a8a;margin-bottom:2px;">Unggah Buku Siswa (File PDF) — Baca Otomatis per BAB</label>
-          <div style="font-size:12px;color:#475569;">Unggah 1x PDF Buku Siswa (${escapeHtml(mapel)} Kelas ${escapeHtml(kelas)}). Sistem otomatis memisahkan materi tiap BAB untuk Bahan Ajar & Soal Asesmen.</div>
+          <label class="form-label" style="color:#1e3a8a;margin-bottom:2px;">Sumber Materi Buku Siswa (${escapeHtml(mapel)} Kelas ${escapeHtml(kelas)}) — Otomatis per BAB</label>
+          <div style="font-size:12px;color:#475569;">Pilih file <strong>.pdf / .txt</strong> ATAU langsung <strong>tempel (Paste) ringkasan materi</strong> dari Buku Siswa / Gemini / ChatGPT di bawah ini.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="file" id="inp-pdf-buku-siswa" accept="application/pdf,.pdf" style="font-size:12px;" onchange="prosesPdfBukuSiswa(this)" />
-          ${(appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel]) ? `<button type="button" class="btn btn-red" style="padding:5px 10px;font-size:11px;" onclick="hapusPdfBukuSiswa()">Hapus PDF</button>` : ''}
+          <input type="file" id="inp-pdf-buku-siswa" accept=".pdf,.txt,application/pdf,text/plain" style="font-size:12px;" onchange="prosesPdfBukuSiswa(this)" />
+          ${(appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel]) ? `<button type="button" class="btn btn-red" style="padding:5px 10px;font-size:11px;" onclick="hapusPdfBukuSiswa()">Hapus Materi</button>` : ''}
         </div>
       </div>
-      <div id="status-pdf-buku" style="margin-top:6px;font-size:12px;font-weight:700;color:#15803d;">
-        ${(appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel])
-          ? `✅ Buku PDF aktif: "${escapeHtml(appState.bukuPdfData[kelas + '_' + mapel].namaFile)}" (${Object.keys(appState.bukuPdfData[kelas + '_' + mapel].perBab || {}).length} bagian BAB terdeteksi)`
-          : 'Belum ada file PDF Buku Siswa diunggah untuk mapel & kelas ini.'}
+      <textarea id="txt-paste-buku-siswa" class="form-control" rows="3" style="font-size:12px;background:#fff;margin-bottom:8px;" placeholder="Contoh tempel materi:&#10;BAB 1: Terampil Bergerak. Gerak lokomotor adalah gerak berpindah tempat seperti berjalan, berlari, dan melompat...&#10;BAB 2: Permainan Bola Besar. Teknik dasar passing bawah dan passing atas..."></textarea>
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;">
+        <button type="button" class="btn btn-blue" style="padding:6px 14px;font-size:12px;" onclick="simpanTeksBukuSiswa()">Simpan Materi ke Bahan Ajar & Soal</button>
+        <div id="status-pdf-buku" style="font-size:12px;font-weight:700;color:#15803d;">
+          ${(appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel])
+            ? `✅ Materi aktif: "${escapeHtml(appState.bukuPdfData[kelas + '_' + mapel].namaFile)}" (${Object.keys(appState.bukuPdfData[kelas + '_' + mapel].perBab || {}).length} bagian BAB tersimpan)`
+            : 'Belum ada materi buku siswa yang disimpan untuk mapel & kelas ini.'}
+        </div>
       </div>
     </div>
 
@@ -5900,64 +5904,91 @@ window.hapusPdfBukuSiswa = function() {
   }
 };
 
+window.simpanMateriKeStateBuku = function(namaSumber, teksMentah) {
+  var bersih = String(teksMentah || '').replace(/\s+/g, ' ').trim();
+  var st = document.getElementById('status-pdf-buku');
+  if (bersih.length < 20) {
+    if (st) st.textContent = '⚠️ Teks materi terlalu pendek atau file PDF berupa scan gambar. Silakan tempel ringkasan materi di kotak atas lalu klik Simpan.';
+    return;
+  }
+  var perBab = {};
+  var potongan = bersih.split(/(?=\bBAB\s+(?:[1-9]|1[0-5]|[IVX]+)\b)/i);
+  if (potongan.length > 1) {
+    potongan.forEach(function(seg) {
+      var m = seg.match(/^\b(BAB\s+(?:[1-9]|1[0-5]|[IVX]+))\b/i);
+      if (m) {
+        var namaBab = m.at(1).toUpperCase().replace(/\s+/g, ' ');
+        if (!perBab[namaBab] || seg.length > perBab[namaBab].length) {
+          perBab[namaBab] = seg.slice(0, 1800).trim();
+        }
+      }
+    });
+  } else {
+    perBab['BAB 1'] = bersih.slice(0, 2000);
+  }
+  if (!appState.bukuPdfData) appState.bukuPdfData = {};
+  var key = String(appState.context.kelas || '').trim() + '_' + String(appState.context.mapel || '').trim();
+  appState.bukuPdfData[key] = { namaFile: namaSumber, perBab: perBab };
+  if (typeof saveState === 'function') saveState();
+  if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
+};
+
+window.simpanTeksBukuSiswa = function() {
+  var el = document.getElementById('txt-paste-buku-siswa');
+  if (!el || !el.value.trim()) {
+    alert('Silakan tempelkan dulu ringkasan materi Buku Siswa (dari PDF / Gemini / ChatGPT) pada kotak teks!');
+    return;
+  }
+  window.simpanMateriKeStateBuku('Ringkasan Materi Buku Siswa', el.value);
+};
+
 window.prosesPdfBukuSiswa = async function(input) {
   var file = input && input.files && input.files.item(0);
   if (!file) return;
   var st = document.getElementById('status-pdf-buku');
-  if (st) st.textContent = '⏳ Sedang membaca seluruh halaman PDF Buku Siswa (' + file.name + '), mohon tunggu...';
+  if (st) st.textContent = '⏳ Membaca file ' + file.name + '...';
+  if (/\.txt$/i.test(file.name)) {
+    var txt = await file.text();
+    window.simpanMateriKeStateBuku(file.name, txt);
+    return;
+  }
   try {
     if (!window.pdfjsLib) {
-      await new Promise(function(resolve, reject) {
-        var s = document.createElement('script');
-        s.src = 'https://cloudflare.com';
-        s.onload = resolve;
-        s.onerror = function() { reject(new Error('Gagal memuat pustaka pembaca PDF. Periksa koneksi internet.')); };
-        document.head.appendChild(s);
-      });
-    }
-    var buf = await file.arrayBuffer();
-    var loadingTask = window.pdfjsLib.getDocument({ data: new Uint8Array(buf), disableWorker: true });
-    var pdf = await loadingTask.promise;
-    var semuaTeks = '';
-    for (var p = 1; p <= pdf.numPages; p++) {
-      if (st && p % 15 === 0) {
-        st.textContent = '⏳ Membaca halaman ' + p + ' dari ' + pdf.numPages + ' halaman...';
+      var urls = [
+        'https://jsdelivr.net' + '/npm/pdfjs-dist@2.16.105/build/pdf.min.js',
+        'https://unpkg.com' + '/pdfjs-dist@2.16.105/build/pdf.min.js'
+      ];
+      for (var u = 0; u < urls.length; u++) {
+        if (window.pdfjsLib) break;
+        try {
+          await new Promise(function(resolve, reject) {
+            var s = document.createElement('script');
+            s.src = urls.at(u);
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        } catch (e) {}
       }
-      var page = await pdf.getPage(p);
-      var tc = await page.getTextContent();
-      var baris = tc.items.map(function(it) { return it.str; }).join(' ');
-      semuaTeks += '\n' + baris;
     }
-    var bersih = semuaTeks.replace(/\s+/g, ' ').trim();
-    if (bersih.length < 50) {
-      if (st) st.textContent = '⚠️ PDF ini berupa hasil scan gambar tanpa teks digital. Gunakan PDF Buku Siswa resmi Kemendikbud (teks digital).';
+    if (!window.pdfjsLib) {
+      if (st) st.textContent = '⚠️ Browser memblokir pembaca PDF otomatis. Silakan salin isi materi dari PDF / Gemini / ChatGPT lalu tempel di kotak di atas & klik Simpan!';
       return;
     }
-    var perBab = {};
-    var potongan = bersih.split(/(?=\bBAB\s+(?:[1-9]|1[0-5]|[IVX]+)\b)/i);
-    if (potongan.length > 1) {
-      potongan.forEach(function(seg) {
-        var m = seg.match(/^\b(BAB\s+(?:[1-9]|1[0-5]|[IVX]+))\b/i);
-        if (m) {
-          var namaBab = m.at(1).toUpperCase().replace(/\s+/g, ' ');
-          if (!perBab[namaBab] || seg.length > perBab[namaBab].length) {
-            perBab[namaBab] = seg.slice(0, 1800).trim();
-          }
-        }
-      });
-    } else {
-      perBab['BAB 1'] = bersih.slice(0, 2000);
+    var buf = await file.arrayBuffer();
+    var pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf), disableWorker: true }).promise;
+    var semuaTeks = '';
+    for (var p = 1; p <= pdf.numPages; p++) {
+      if (st && p % 15 === 0) st.textContent = '⏳ Membaca halaman ' + p + ' dari ' + pdf.numPages + '...';
+      var page = await pdf.getPage(p);
+      var tc = await page.getTextContent();
+      semuaTeks += '\n' + tc.items.map(function(it) { return it.str; }).join(' ');
     }
-    if (!appState.bukuPdfData) appState.bukuPdfData = {};
-    var key = String(appState.context.kelas || '').trim() + '_' + String(appState.context.mapel || '').trim();
-    appState.bukuPdfData[key] = { namaFile: file.name, perBab: perBab };
-    if (typeof saveState === 'function') saveState();
-    if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
+    window.simpanMateriKeStateBuku(file.name, semuaTeks);
   } catch (err) {
-    if (st) st.textContent = '❌ Gagal membaca PDF: ' + (err && err.message ? err.message : String(err));
+    if (st) st.textContent = '⚠️ File PDF tidak dapat dibaca otomatis. Silakan salin teks materi dari PDF / Gemini lalu tempel di kotak di atas & klik Simpan!';
   }
 };
-
 </script>
 
 </body>
