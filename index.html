@@ -5555,8 +5555,12 @@ window.onPilihKodeTpATP = function(sel) {
   if (typeof showToast === 'function') {
     showToast('Otomatis masuk ke Kelas ' + appState.context.kelas + ' Semester ' + appState.context.semester + '!');
   }
+ 
+};
 
 window.openATPModal = function(id) {
+  id = id || null;
+
   id = id || null;
   var ex = id ? appState.atpList.find(function(x) { return x.id === id; }) : null;
   var tps = window.getTpsFase();
