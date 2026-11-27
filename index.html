@@ -5366,12 +5366,12 @@ window.openAnalisisCPModal = function(id) {
             return;
           }
           var tercentang = String(materiTersimpan || '').split(/[,;\n]+/).map(function(s) { return s.trim(); }).filter(Boolean);
-          box.innerHTML = materiList.map(function(m, idx) {
+                    box.innerHTML = materiList.map(function(m, idx) {
             var teks = String(m.materi || '').trim();
             var checked = !ex ? (idx === 0) : (tercentang.indexOf(teks) > -1);
             return '<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:#fff;border:1px solid #bbf7d0;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px;">' +
               '<input type="checkbox" class="chk-materi-an" value="' + escapeHtml(teks) + '"' + (checked ? ' checked' : '') + ' onchange="syncCeklisKeGabungan()">' +
-              '<span><strong>[Kelas ' + escapeHtml(String(m.kelas)) + ' • Sem ' + escapeHtml(String(m.semester)) + ']</strong> ' + escapeHtml(teks) + '</span>' +
+              '<span>' + escapeHtml(teks) + '</span>' +
             '</label>';
           }).join('');
           window.syncCeklisKeGabungan();
@@ -5384,10 +5384,9 @@ window.openAnalisisCPModal = function(id) {
           var dipilih = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]:checked'))
             .map(function(cb) { return cb.value.trim(); })
             .filter(Boolean);
-          if (dipilih.length) {
-            inpGabung.value = dipilih.join(', ');
-          }
+          inpGabung.value = dipilih.join(', ');
           if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
+          if (typeof updateGabunganMateriAnalisis === 'function') updateGabunganMateriAnalisis(true);
         };
     
         var syncBabKeContext = function() {
