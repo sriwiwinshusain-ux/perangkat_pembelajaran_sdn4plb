@@ -4287,6 +4287,20 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
           </select>
         </div>
         <button type="button" class="btn btn-green btn-block" style="margin-top:10px;" onclick="renderCurrentMenu();">Susun Naskah Soal Sekarang</button>
+                <div style="margin-top:10px;padding:10px 12px;background:#eef2ff;border:1.5px solid #6366f1;border-radius:10px;">
+          <label class="form-label" style="color:#312e81;font-size:12px;margin-bottom:4px;">✨ Gemini AI Pembuat Soal Otomatis (Soal Unik Sesuai Buku Siswa &amp; TP)</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <input type="password" id="inp-gemini-key" class="form-control" style="flex:1;min-width:180px;font-size:12px;" placeholder="Tempel Gemini API Key (AIzaSy...)" value="${escapeHtml(localStorage.getItem('gemini_api_key_sd') || '')}" onchange="localStorage.setItem('gemini_api_key_sd', this.value.trim())" />
+            <button type="button" class="btn btn-blue" id="btn-gen-gemini" style="font-size:12px;padding:6px 12px;" onclick="generateSoalDenganGemini('${mode}')">✨ Susun Soal via Gemini AI</button>
+            ${(appState.geminiAsesmenCache && appState.geminiAsesmenCache[mode + '_' + kelas + '_' + semester + '_' + mapel]) ? `<button type="button" class="btn btn-red" style="font-size:11px;padding:6px 10px;" onclick="hapusCacheGeminiSoal('${mode}')">Reset</button>` : ''}
+          </div>
+          <div id="status-gemini-soal" style="font-size:11.5px;color:#4338ca;margin-top:4px;font-weight:600;">
+            ${(appState.geminiAsesmenCache && appState.geminiAsesmenCache[mode + '_' + kelas + '_' + semester + '_' + mapel])
+              ? '✅ Naskah soal aktif saat ini disusun oleh Gemini AI.'
+              : 'Masukkan Gemini API Key gratis dari ://google.com lalu klik tombol di samping.'}
+          </div>
+        </div>
+
       </div>
 
             </div>
@@ -6071,6 +6085,153 @@ window.prosesPdfBukuSiswa = async function(input) {
     if (st) st.textContent = '⚠️ File PDF tidak dapat dibaca otomatis. Silakan salin teks materi dari PDF / Gemini lalu tempel di kotak di atas & klik Simpan!';
   }
 };
+  window.hapusCacheGeminiSoal = function(mode) {
+  var ctx = appState.context || {};
+  var k = mode + '_' + String(ctx.kelas || '') + '_' + String(ctx.semester || '') + '_' + String(ctx.mapel || '');
+  if (appState.geminiAsesmenCache && appState.geminiAsesmenCache[k]) {
+    delete appState.geminiAsesmenCache[k];
+    if (typeof saveState === 'function') saveState();
+    if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
+  }
+};
+
+window.generateSoalDenganGemini = async function(mode) {
+  var apiKey = (document.getElementById('inp-gemini-key') && document.getElementById('inp-gemini-key').value.trim()) || localStorage.getItem('gemini_api_key_sd') || '';
+  var st = document.getElementById('status-gemini-soal');
+  var btn = document.getElementById('btn-gen-gemini');
+  if (!apiKey) {
+    alert('Silakan tempelkan Gemini API Key terlebih dahulu pada kotak yang tersedia!');
+    return;
+  }
+  localStorage.setItem('gemini_api_key_sd', apiKey);
+
+  var ctx = appState.context || {};
+  var kelas = String(ctx.kelas || '5');
+  var semester = String(ctx.semester || '1');
+  var mapel = String(ctx.mapel || '');
+  var cfg = appState.asesmenConfig || {};
+  var kesulitan = cfg.kesulitan || 'mudah';
+
+  var daftarTp = (appState.atpList || []).filter(function(a) {
+    return String(a.kelas || '').trim() === kelas && String(a.semester || '').trim() === semester && String(a.mapel || '').trim() === mapel;
+  });
+  var teksTp = daftarTp.map(function(a) { return '[' + a.kodeTp + '] ' + a.tujuanPembelajaran; }).join('\n');
+
+  var materiBuku = '';
+  if (appState.bukuPdfData && appState.bukuPdfData[kelas + '_' + mapel] && appState.bukuPdfData[kelas + '_' + mapel].perBab) {
+    var babs = appState.bukuPdfData[kelas + '_' + mapel].perBab;
+    materiBuku = Object.keys(babs).map(function(k) { return k + ': ' + String(babs[k]).slice(0, 800); }).join('\n\n');
+  }
+
+  var promptText = 'Anda adalah guru SD profesional Kurikulum Merdeka. Susun naskah soal asesmen SD yang ramah anak SD, komunikatif, bervariasi (tidak mengulang kalimat sama), dan sesuai kaidah penulisan soal.\n' +
+    'Identitas: Kelas ' + kelas + ' SD, Semester ' + semester + ', Mapel: ' + mapel + ', Tingkat Kesulitan: ' + kesulitan.toUpperCase() + '.\n' +
+    'Jumlah Soal:\n' +
+    '- Pilihan Ganda (PG, 4 opsi A/B/C/D): ' + (Number(cfg.pg) || 0) + ' soal\n' +
+    '- Pilihan Ganda Kompleks MCMA (lebih dari 1 jawaban benar): ' + (Number(cfg.pgkMcma) || 0) + ' soal\n' +
+    '- Pilihan Ganda Kompleks Kategori (Benar/Salah): ' + (Number(cfg.pgkKategori) || 0) + ' soal\n' +
+    '- Isian Singkat (jawaban 1-2 kata pasti): ' + (Number(cfg.isian) || 0) + ' soal\n' +
+    '- Uraian (pertanyaan Jelaskan/Sebutkan/Bagaimana): ' + (Number(cfg.uraian) || 0) + ' soal\n\n' +
+    'Tujuan Pembelajaran (TP):\n' + (teksTp || mapel) + '\n\n' +
+    'Referensi Materi Buku Siswa:\n' + (materiBuku || 'Gunakan materi pokok Kurikulum Merdeka SD sesuai TP di atas.') + '\n\n' +
+    'Balas HANYA dalam format JSON valid tanpa markdown dengan struktur:\n' +
+    '{"pg":[{"no":1,"tp":"kodeTP","indikator":"...","bacaan":"...","tanya":"...","opsi":["A. ...","B. ...","C. ...","D. ..."],"kunci":"A","pembahasan":"..."}],' +
+    '"pgkMcma":[{"no":1,"tp":"kodeTP","indikator":"...","tanya":"...","pernyataan":["...","...","...","..."],"kunci":"1 dan 3","pembahasan":"..."}],' +
+    '"pgkKategori":[{"no":1,"tp":"kodeTP","indikator":"...","tanya":"...","baris":[{"teks":"...","kunci":"Benar"},{"teks":"...","kunci":"Salah"}],"pembahasan":"..."}],' +
+    '"isian":[{"no":1,"tp":"kodeTP","indikator":"...","tanya":"... ....","kunci":"...","pembahasan":"..."}],' +
+    '"uraian":[{"no":1,"tp":"kodeTP","indikator":"...","tanya":"...","kunci":"...","pembahasan":"..."}]}';
+
+  if (btn) btn.disabled = true;
+  if (st) st.textContent = '⏳ Gemini AI sedang menyusun soal sesuai Buku Siswa & TP Anda (5-15 detik)...';
+
+  try {
+    var endpoint = 'https://googleapis.com' + '/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey);
+    var res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { temperature: 0.7, responseMimeType: 'application/json' }
+      })
+    });
+    var json = await res.json();
+    if (!res.ok || !json.candidates || !json.candidates.at(0)) {
+      throw new Error((json.error && json.error.message) || 'Gagal menghubungi Gemini API. Periksa API Key Anda.');
+    }
+    var rawOut = json.candidates.at(0).content.parts.at(0).text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    var parsed = JSON.parse(rawOut);
+
+    if (!appState.geminiAsesmenCache) appState.geminiAsesmenCache = {};
+    var cacheKey = mode + '_' + kelas + '_' + semester + '_' + mapel;
+    appState.geminiAsesmenCache[cacheKey] = parsed;
+    if (typeof saveState === 'function') saveState();
+    if (typeof renderCurrentMenu === 'function') renderCurrentMenu();
+  } catch (err) {
+    if (st) st.textContent = '❌ ' + (err && err.message ? err.message : String(err));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+(function() {
+  if (typeof buildAsesmenPackage !== 'function') return;
+  var origBuild = buildAsesmenPackage;
+  window.buildAsesmenPackage = function(mode, chosenAtps, cfg) {
+    var baseRes = origBuild.apply(this, arguments);
+    var ctx = appState.context || {};
+    var cacheKey = mode + '_' + String(ctx.kelas || '') + '_' + String(ctx.semester || '') + '_' + String(ctx.mapel || '');
+    var g = appState.geminiAsesmenCache && appState.geminiAsesmenCache[cacheKey];
+    if (!g || typeof g !== 'object') return baseRes;
+
+    var kisiHtml = '', naskahHtml = '', kunciHtml = '';
+    var noUrut = 1;
+    var addKisi = function(no, tp, ind, bentuk, bobot) {
+      kisiHtml += '<tr><td style="text-align:center;">' + no + '</td><td>' + escapeHtml(tp || '-') + '</td><td>' + escapeHtml(ind || '-') + '</td><td>' + bentuk + '</td><td style="text-align:center;">L2</td><td style="text-align:center;">' + bobot + '</td></tr>';
+    };
+    var addKunci = function(no, bentuk, kunci, bahas, bobot) {
+      kunciHtml += '<tr><td style="text-align:center;">' + no + '</td><td>' + bentuk + '</td><td><strong>' + escapeHtml(kunci || '-') + '</strong></td><td>' + escapeHtml(bahas || '-') + '</td><td style="text-align:center;">' + bobot + '</td></tr>';
+    };
+
+    if (Array.isArray(g.pg) && g.pg.length) {
+      naskahHtml += '<div style="background:#14532d;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;margin:14px 0 10px 0;">I. PILIHAN GANDA (Pilihlah satu jawaban yang paling tepat!)</div>';
+      g.pg.forEach(function(item) {
+        var no = noUrut++;
+        addKisi(no, item.tp, item.indikator, 'Pilihan Ganda', 1);
+        addKunci(no, 'Pilihan Ganda', item.kunci, item.pembahasan, 1);
+        var bac = item.bacaan ? '<div style="background:#f8fafc;border-left:4px solid #16a34a;padding:8px 12px;margin-bottom:6px;border-radius:6px;font-size:12.5px;">' + escapeHtml(item.bacaan) + '</div>' : '';
+        var ops = Array.isArray(item.opsi) ? item.opsi.map(function(o) { return escapeHtml(o) + '<br>'; }).join('') : '';
+        naskahHtml += '<div style="margin-bottom:14px;font-size:13px;">' + bac + '<div style="font-weight:700;margin-bottom:4px;">' + no + '. ' + escapeHtml(item.tanya) + '</div><div style="padding-left:18px;">' + ops + '</div></div>';
+      });
+    }
+
+    if (Array.isArray(g.pgkMcma) && g.pgkMcma.length) {
+      naskahHtml += '<div style="background:#713f12;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;margin:14px 0 10px 0;">II. PILIHAN GANDA KOMPLEKS - MCMA (Berilah tanda centang &#10003; pada pernyataan yang benar!)</div>';
+      g.pgkMcma.forEach(function(item) {
+        var no = noUrut++;
+        addKisi(no, item.tp, item.indikator, 'PGK MCMA', 2);
+        addKunci(no, 'PGK MCMA', item.kunci, item.pembahasan, 2);
+        var pers = Array.isArray(item.pernyataan) ? item.pernyataan.map(function(p) { return '&#9744; ' + escapeHtml(p) + '<br>'; }).join('') : '';
+        naskahHtml += '<div style="margin-bottom:14px;font-size:13px;"><div style="font-weight:700;margin-bottom:4px;">' + no + '. ' + escapeHtml(item.tanya) + '</div><div style="padding-left:18px;">' + pers + '</div></div>';
+      });
+    }
+
+    if (Array.isArray(g.pgkKategori) && g.pgkKategori.length) {
+      naskahHtml += '<div style="background:#1e3a8a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;margin:14px 0 10px 0;">III. PILIHAN GANDA KOMPLEKS - KATEGORI (Tentukan Benar atau Salah!)</div>';
+      g.pgkKategori.forEach(function(item) {
+        var no = noUrut++;
+        addKisi(no, item.tp, item.indikator, 'PGK Kategori', 2);
+        addKunci(no, 'PGK Kategori', item.kunci, item.pembahasan, 2);
+        var rows = Array.isArray(item.baris) ? item.baris.map(function(b) { return '<tr><td>' + escapeHtml(b.teks) + '</td><td style="text-align:center;">&#9744;</td><td style="text-align:center;">&#9744;</td></tr>'; }).join('') : '';
+        naskahHtml += '<div style="margin-bottom:14px;font-size:13px;"><div style="font-weight:700;margin-bottom:4px;">' + no + '. ' + escapeHtml(item.tanya) + '</div><table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr><th>Pernyataan</th><th style="width:70px;">Benar</th><th style="width:70px;">Salah</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      });
+    }
+
+    if (Array.isArray(g.isian) && g.isian.length) {
+      naskahHtml += '<div style="background:#831843;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;margin:14px 0 10px 0;">IV. ISIAN SINGKAT (Isilah titik-titik di bawah ini dengan jawaban yang tepat!)</div>';
+      g.isian.forEach(function(item) {
+        var no = noUrut++;
+        addKisi(no, item.tp, item.indikator, 'Isian Singkat', 2);
+        addKunci(no, 'Isian Singkat', item.kunci, item.pembahasan, 2);
+
 </script>
 
 </body>
