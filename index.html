@@ -5199,20 +5199,109 @@ window.openAnalisisCPModal = function(id) {
   var prevRenderMenu = window.renderCurrentMenu;
   window.renderCurrentMenu = function() {
     if (typeof prevRenderMenu === 'function') prevRenderMenu();
-    if (appState.activeMenu === 'analisis_cp') {
+    var menu = appState.activeMenu;
+
+    if (menu === 'analisis_cp' || menu === 'bank_bab_materi' || menu === 'bbm') {
       var elFase = document.getElementById('wrap-ctx-fase');
       var elKelas = document.getElementById('wrap-ctx-kelas');
       var elSem = document.getElementById('wrap-ctx-semester');
       var elMapel = document.getElementById('wrap-ctx-mapel');
-      if (elFase) elFase.classList.remove('hidden');
-      if (elKelas) elKelas.classList.add('hidden');
-      if (elSem) elSem.classList.add('hidden');
-      if (elMapel) elMapel.classList.remove('hidden');
       var selFase = document.getElementById('ctx-fase');
+      var selSem = document.getElementById('ctx-semester');
+
       var faseAktif = appState.context.fase || kelasToFase(appState.context.kelas || '5');
       appState.context.fase = faseAktif;
       if (selFase) selFase.value = faseAktif;
+      if (selSem && appState.context.semester) selSem.value = String(appState.context.semester);
+
+      if (elFase) elFase.classList.remove('hidden');
+      if (elKelas) elKelas.classList.add('hidden');
+      if (elMapel) elMapel.classList.remove('hidden');
+
+      if (menu === 'analisis_cp') {
+        if (elSem) elSem.classList.add('hidden');
+      } else {
+        if (elSem) elSem.classList.remove('hidden');
+        sesuaikanTampilanBankBab(faseAktif);
+      }
     }
+  };
+
+  function sesuaikanTampilanBankBab(faseAktif) {
+    var formBbm = document.querySelector('form[onsubmit*="simpanBbm"]');
+    if (!formBbm) return;
+    var klsFase = kelasDalamFase(faseAktif);
+    var klsDefault = klsFase.indexOf(String(appState.context.kelas)) > -1 ? String(appState.context.kelas) : klsFase[0];
+
+    if (!document.getElementById('f-bbm-kelas')) {
+      var divKls = document.createElement('div');
+      divKls.className = 'form-group';
+      divKls.style.marginBottom = '10px';
+      divKls.innerHTML = '<label class="form-label">Pilih Kelas (' + escapeHtml(faseAktif) + ')</label>' +
+        '<select id="f-bbm-kelas" class="form-control">' +
+        klsFase.map(function(k) {
+          return '<option value="' + k + '"' + (k === klsDefault ? ' selected' : '') + '>Kelas ' + k + ' (' + escapeHtml(faseAktif) + ')</option>';
+        }).join('') +
+        '</select>';
+      formBbm.insertBefore(divKls, formBbm.querySelector('.grid-2'));
+    }
+
+    var semAktif = String(appState.context.semester || '1');
+    var mapelAktif = appState.context.mapel;
+    var cardTitle = document.querySelector('.card-title');
+    if (cardTitle && cardTitle.textContent.indexOf('Bank BAB & Materi') > -1) {
+      cardTitle.textContent = 'Bank BAB & Materi • ' + faseAktif + ' • Semester ' + semAktif;
+    }
+
+    var tbl = document.querySelector('.table-wrap table');
+    if (!tbl) return;
+    var theadRow = tbl.querySelector('thead tr');
+    if (theadRow && theadRow.children.length === 4) {
+      var thKls = document.createElement('th');
+      thKls.style.width = '85px';
+      thKls.textContent = 'Kelas';
+      theadRow.insertBefore(thKls, theadRow.children[1]);
+    }
+
+    var listFase = (appState.bankBabMateri || []).filter(function(it) {
+      return kelasToFase(it.kelas) === faseAktif &&
+             String(it.semester) === semAktif &&
+             it.mapel === mapelAktif;
+    });
+
+    var tbody = tbl.querySelector('tbody');
+    if (tbody) {
+      tbody.innerHTML = listFase.length ? listFase.map(function(it, i) {
+        return '<tr>' +
+          '<td>' + (i + 1) + '</td>' +
+          '<td><span class="badge badge-green">Kelas ' + escapeHtml(String(it.kelas)) + '</span></td>' +
+          '<td><span class="badge badge-brown">' + escapeHtml(it.bab) + '</span></td>' +
+          '<td><strong>' + escapeHtml(it.materi || '-') + '</strong></td>' +
+          '<td class="no-print">' +
+            '<button type="button" class="btn btn-yellow btn-sm" onclick="editBbm(\'' + it.id + '\')">Edit</button> ' +
+            '<button type="button" class="btn btn-pink btn-sm" onclick="hapusBbm(\'' + it.id + '\')">Hapus</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('') : '<tr><td colspan="5" style="text-align:center;">Belum ada data BAB & Materi pada ' + escapeHtml(faseAktif) + ' Semester ' + escapeHtml(semAktif) + '.</td></tr>';
+    }
+  }
+
+  var prevSimpanBbm = window.simpanBbm;
+  window.simpanBbm = function(e) {
+    var selKls = document.getElementById('f-bbm-kelas');
+    if (selKls && selKls.value) appState.context.kelas = String(selKls.value);
+    if (typeof prevSimpanBbm === 'function') prevSimpanBbm(e);
+  };
+
+  var prevEditBbm = window.editBbm;
+  window.editBbm = function(id) {
+    var it = (appState.bankBabMateri || []).find(function(x) { return x.id === id; });
+    if (it && it.kelas) appState.context.kelas = String(it.kelas);
+    if (typeof prevEditBbm === 'function') prevEditBbm(id);
+    setTimeout(function() {
+      var selKls = document.getElementById('f-bbm-kelas');
+      if (selKls && it && it.kelas) selKls.value = String(it.kelas);
+    }, 20);
   };
 
   var prevUpdateCtx = window.updateContext;
@@ -5220,9 +5309,9 @@ window.openAnalisisCPModal = function(id) {
     if (key === 'fase') {
       var daftarKls = kelasDalamFase(val);
       if (daftarKls.indexOf(String(appState.context.kelas)) === -1) {
-        appState.context.kelas = daftarKls.at(0);
+        appState.context.kelas = daftarKls[0];
         var selKls = document.getElementById('ctx-kelas');
-        if (selKls) selKls.value = daftarKls.at(0);
+        if (selKls) selKls.value = daftarKls[0];
       }
     }
     if (typeof prevUpdateCtx === 'function') prevUpdateCtx(key, val);
@@ -5231,13 +5320,13 @@ window.openAnalisisCPModal = function(id) {
   var prevOpenModal = window.openAnalisisCPModal;
   window.openAnalisisCPModal = function(id) {
     var ex = id ? (appState.analisisList || []).find(function(x) { return x.id === id; }) : null;
-    var faseAktif = appState.context.fase || kelasToFase(appState.context.kelas || '5');
+    var faseAktif = String(appState.context.fase || kelasToFase(appState.context.kelas || '5')).trim();
     var klsFase = kelasDalamFase(faseAktif);
     if (ex) {
       appState.context.kelas = String(ex.kelas);
       appState.context.semester = String(ex.semester);
     } else if (appState.activeMenu === 'analisis_cp' && klsFase.indexOf(String(appState.context.kelas)) === -1) {
-      appState.context.kelas = klsFase.at(0);
+      appState.context.kelas = klsFase[0];
     }
     if (typeof prevOpenModal === 'function') prevOpenModal(id);
     if (appState.activeMenu === 'analisis_cp') {
@@ -5245,20 +5334,49 @@ window.openAnalisisCPModal = function(id) {
         var elBab = document.getElementById('f-an-bab');
         if (!elBab) return;
 
-        var semuaBabFase = (appState.bankBabList || []).filter(function(b) {
-          return kelasToFase(b.kelas) === faseAktif && b.mapel === appState.context.mapel;
+        var mapelAktif = String(appState.context.mapel || '').trim().toLowerCase();
+        var daftarBank = appState.bankBabMateri || [];
+
+        var semuaBabFase = daftarBank.filter(function(b) {
+          var faseItem = kelasToFase(b.kelas);
+          var mapelItem = String(b.mapel || '').trim().toLowerCase();
+          return faseItem.toLowerCase() === faseAktif.toLowerCase() && mapelItem === mapelAktif;
         });
+
         if (semuaBabFase.length) {
           var babMap = {};
           semuaBabFase.forEach(function(b) { if (b.bab) babMap[b.bab] = true; });
           var babs = Object.keys(babMap);
           var curBab = ex ? ex.bab : elBab.value;
+          if (babs.indexOf(curBab) === -1) curBab = babs[0];
           elBab.innerHTML = babs.map(function(b) {
             return '<option value="' + b.replace(/"/g, '&quot;') + '"' + (b === curBab ? ' selected' : '') + '>' + b + '</option>';
           }).join('');
         } else {
           elBab.innerHTML = '<option value="">-- Belum ada BAB di Bank BAB (' + faseAktif + ') --</option>';
         }
+
+        var renderCeklisMateriDariBank = function(babDipilih, materiTersimpan) {
+          var box = document.getElementById('box-ceklis-materi-analisis') || document.getElementById('an-materi-checklist');
+          var materiList = semuaBabFase.filter(function(b) { return b.bab === babDipilih; });
+          if (!box) {
+            if (typeof renderCheckboxMateriAnalisis === 'function') renderCheckboxMateriAnalisis(babDipilih, materiTersimpan);
+            return;
+          }
+          if (!materiList.length) {
+            box.innerHTML = '<div style="font-size:12px;color:#64748b;">Belum ada daftar materi pada BAB ini. Ketik manual pada kotak di bawah:</div>';
+            return;
+          }
+          var tercentang = String(materiTersimpan || '').split(/[,;\n]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+          box.innerHTML = materiList.map(function(m, idx) {
+            var teks = String(m.materi || '').trim();
+            var checked = !ex ? (idx === 0) : (tercentang.indexOf(teks) > -1);
+            return '<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:#fff;border:1px solid #bbf7d0;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px;">' +
+              '<input type="checkbox" class="chk-materi-an" value="' + escapeHtml(teks) + '"' + (checked ? ' checked' : '') + ' onchange="if(typeof updateGabunganMateriAnalisis===\'function\')updateGabunganMateriAnalisis(true);">' +
+              '<span><strong>[Kelas ' + escapeHtml(String(m.kelas)) + ' • Sem ' + escapeHtml(String(m.semester)) + ']</strong> ' + escapeHtml(teks) + '</span>' +
+            '</label>';
+          }).join('');
+        };
 
         var syncBabKeContext = function() {
           var babDipilih = elBab.value;
@@ -5267,7 +5385,7 @@ window.openAnalisisCPModal = function(id) {
             appState.context.kelas = String(cocok.kelas);
             appState.context.semester = String(cocok.semester);
           }
-          if (typeof renderCheckboxMateriAnalisis === 'function') renderCheckboxMateriAnalisis(babDipilih, ex ? ex.kontenMateri : '');
+          renderCeklisMateriDariBank(babDipilih, ex ? ex.kontenMateri : '');
           if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
           if (typeof updateGabunganMateriAnalisis === 'function') updateGabunganMateriAnalisis(!ex);
         };
