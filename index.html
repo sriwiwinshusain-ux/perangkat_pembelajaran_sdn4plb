@@ -5256,52 +5256,88 @@ window.openAnalisisCPModal = function(id) {
           elBab.innerHTML = babs.map(function(b) {
             return '<option value="' + b.replace(/"/g, '&quot;') + '"' + (b === curBab ? ' selected' : '') + '>' + b + '</option>';
           }).join('');
+        } else {
+          elBab.innerHTML = '<option value="">-- Belum ada BAB di Bank BAB (' + faseAktif + ') --</option>';
         }
 
-        if (!document.getElementById('f-an-materi-input')) {
+        if (!document.getElementById('f-an-materi-select')) {
           var parentGroup = elBab.closest('.form-group');
           if (parentGroup && parentGroup.parentNode) {
             var wrapMateri = document.createElement('div');
             wrapMateri.className = 'form-group';
             wrapMateri.innerHTML =
-              '<label class="form-label">Materi / Topik Pembelajaran</label>' +
-              '<input type="text" id="f-an-materi-input" class="form-control" placeholder="Ketik materi atau pilih dari daftar BAB..." value="' +
-              (ex && ex.kontenMateri ? String(ex.kontenMateri).replace(/"/g, '&quot;') : '') + '">';
+              '<label class="form-label">Pilih Materi / Topik Pembelajaran</label>' +
+              '<select id="f-an-materi-select" class="form-control"><option value="">-- Pilih Materi --</option></select>';
             parentGroup.parentNode.insertBefore(wrapMateri, parentGroup.nextSibling);
 
-            var inpMateri = document.getElementById('f-an-materi-input');
-            inpMateri.oninput = function() {
+            var selMateri = document.getElementById('f-an-materi-select');
+            selMateri.onchange = function() {
+              var valMat = selMateri.value;
               var elGab = document.getElementById('f-an-konten');
               if (elGab) {
-                elGab.value = inpMateri.value;
+                elGab.value = valMat;
                 elGab.dispatchEvent(new Event('input'));
               }
+              if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
             };
           }
         }
 
         var syncBabKeContext = function() {
           var babDipilih = elBab.value;
-          var cocok = semuaBabFase.find(function(b) { return b.bab === babDipilih; });
-          if (cocok) {
-            appState.context.kelas = String(cocok.kelas);
-            appState.context.semester = String(cocok.semester);
+          var cocokList = semuaBabFase.filter(function(b) { return b.bab === babDipilih; });
+          if (cocokList.length) {
+            appState.context.kelas = String(cocokList.at(0).kelas);
+            appState.context.semester = String(cocokList.at(0).semester);
           }
+
+          var selMat = document.getElementById('f-an-materi-select');
+          if (selMat) {
+            var daftarMateri = [];
+            cocokList.forEach(function(b) {
+              var raw = b.materiList || b.materi || b.subMateri || b.topik || '';
+              if (Array.isArray(raw)) {
+                raw.forEach(function(m) {
+                  var teks = typeof m === 'object' ? (m.materi || m.nama || m.judul || '') : String(m || '');
+                  if (teks.trim() && daftarMateri.indexOf(teks.trim()) === -1) daftarMateri.push(teks.trim());
+                });
+              } else if (typeof raw === 'string' && raw.trim()) {
+                raw.split(/\n|;|,/).forEach(function(m) {
+                  if (m.trim() && daftarMateri.indexOf(m.trim()) === -1) daftarMateri.push(m.trim());
+                });
+              }
+            });
+
+            if (daftarMateri.length) {
+              var curMat = ex ? String(ex.kontenMateri || '') : '';
+              selMat.innerHTML = daftarMateri.map(function(m) {
+                return '<option value="' + m.replace(/"/g, '&quot;') + '"' + (m === curMat ? ' selected' : '') + '>' + m + '</option>';
+              }).join('');
+              if (!curMat) selMat.value = daftarMateri.at(0);
+            } else {
+              selMat.innerHTML = '<option value="">-- Belum ada materi pada ' + (babDipilih || 'BAB ini') + ' --</option>';
+            }
+          }
+
           if (typeof renderCheckboxMateriAnalisis === 'function') renderCheckboxMateriAnalisis(babDipilih, ex ? ex.kontenMateri : '');
           if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
           if (typeof updateGabunganMateriAnalisis === 'function') updateGabunganMateriAnalisis(!ex);
+
+          var selMat2 = document.getElementById('f-an-materi-select');
           var elGab2 = document.getElementById('f-an-konten');
-          var inpMat2 = document.getElementById('f-an-materi-input');
-          if (elGab2 && inpMat2 && elGab2.value) inpMat2.value = elGab2.value;
+          if (selMat2 && selMat2.value && elGab2) {
+            elGab2.value = selMat2.value;
+            elGab2.dispatchEvent(new Event('input'));
+          }
         };
 
         elBab.onchange = syncBabKeContext;
-        if (!ex) syncBabKeContext();
+        syncBabKeContext();
       }, 30);
     }
   };
 })();
-  window.getTpsGlobal = function(i) { return i === '' ? null : (getTps().slice(parseInt(i,10), parseInt(i,10)+1).pop() || null); };
+window.getTpsGlobal = function(i) { return i === '' ? null : (getTps().slice(parseInt(i,10), parseInt(i,10)+1).pop() || null); };
 
    window.onPilihBabMateriATP = function(sel) {
   var opt = sel.options[sel.selectedIndex];
