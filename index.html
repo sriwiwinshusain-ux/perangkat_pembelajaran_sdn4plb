@@ -2967,15 +2967,21 @@ CP_STANDAR_DB['PJOK'] = CP_STANDAR_DB['Pendidikan Jasmani, Olahraga, dan Kesehat
         kelas: appState.context.kelas,
         semester: appState.context.semester,
         mapel: appState.context.mapel,
-        elemen: document.getElementById('f-atp-elemen').value.trim(),
-        lingkupMateri: document.getElementById('f-atp-materi').value.trim(),
-        kodeTp: document.getElementById('f-atp-kode').value.trim(),
-        tujuanPembelajaran: document.getElementById('f-atp-tp').value.trim(),
-        alokasiWaktu: document.getElementById('f-atp-jp').value.trim(),
-        asesmenTeknik: document.getElementById('f-atp-teknik').value.trim(),
-        asesmenInstrumen: document.getElementById('f-atp-instrumen').value.trim(),
-        profilLulusan: document.getElementById('f-atp-profil').value.trim()
-      };
+            bab: (document.getElementById('f-atp-bab') ? document.getElementById('f-atp-bab').value.trim() : ''),
+    elemen: (document.getElementById('f-atp-elemen') ? document.getElementById('f-atp-elemen').value.trim() : ''),
+    lingkupMateri: (function() {
+      const b = document.getElementById('f-atp-bab') ? document.getElementById('f-atp-bab').value.trim() : '';
+      const m = document.getElementById('f-atp-materi') ? document.getElementById('f-atp-materi').value.trim() : '';
+      return b && m && m.indexOf(b) === -1 ? (b + ' - ' + m) : (m || b);
+    })(),
+    kodeTp: (document.getElementById('f-atp-kode') ? document.getElementById('f-atp-kode').value.trim() : ''),
+    tujuanPembelajaran: (document.getElementById('f-atp-tp') ? document.getElementById('f-atp-tp').value.trim() : ''),
+    alokasiWaktu: ((document.getElementById('f-atp-waktu') || document.getElementById('f-atp-jp') || {value: '4 JP'}).value || '').trim(),
+    asesmenTeknik: (document.getElementById('f-atp-teknik') ? document.getElementById('f-atp-teknik').value.trim() : 'Tes Tertulis / Observasi'),
+    asesmenInstrumen: (document.getElementById('f-atp-instrumen') ? document.getElementById('f-atp-instrumen').value.trim() : 'Rubrik / Lembar Soal'),
+    profilLulusan: (document.getElementById('f-atp-profil') ? document.getElementById('f-atp-profil').value.trim() : 'Bernalar Kritis, Mandiri')
+  };
+
       if (id) {
         const idx = appState.atpList.findIndex(x => x.id === id);
         if (idx > -1) appState.atpList[idx] = payload;
