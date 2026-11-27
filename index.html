@@ -5095,7 +5095,9 @@
           String(a.elemen || '').trim().toLowerCase() === elLow;
       });
       var nomorUrut = daftarExisting.length + 1;
-      elKode.value = fase + '.' + kelasAngka + '.' + nomorElemen + '.' + nomorUrut;
+            var faseHuruf = String(fase || 'C').replace(/^fase\s*/i, '').trim() || 'C';
+      var semAngka = String(c.semester || '1').replace(/[^0-9]/g, '') || '1';
+      elKode.value = faseHuruf + '.' + kelasAngka + '.' + semAngka + '.' + nomorElemen + '.' + nomorUrut;
     }
   }
 };
