@@ -5389,28 +5389,7 @@ window.openAnalisisCPModal = function(id) {
           }
           if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
         };
-
-          var box = document.getElementById('box-ceklis-materi-analisis') || document.getElementById('an-materi-checklist');
-          var materiList = semuaBabFase.filter(function(b) { return b.bab === babDipilih; });
-          if (!box) {
-            if (typeof renderCheckboxMateriAnalisis === 'function') renderCheckboxMateriAnalisis(babDipilih, materiTersimpan);
-            return;
-          }
-          if (!materiList.length) {
-            box.innerHTML = '<div style="font-size:12px;color:#64748b;">Belum ada daftar materi pada BAB ini. Ketik manual pada kotak di bawah:</div>';
-            return;
-          }
-          var tercentang = String(materiTersimpan || '').split(/[,;\n]+/).map(function(s) { return s.trim(); }).filter(Boolean);
-          box.innerHTML = materiList.map(function(m, idx) {
-            var teks = String(m.materi || '').trim();
-            var checked = !ex ? (idx === 0) : (tercentang.indexOf(teks) > -1);
-            return '<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:#fff;border:1px solid #bbf7d0;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px;">' +
-              '<input type="checkbox" class="chk-materi-an" value="' + escapeHtml(teks) + '"' + (checked ? ' checked' : '') + ' onchange="if(typeof updateGabunganMateriAnalisis===\'function\')updateGabunganMateriAnalisis(true);">' +
-              '<span><strong>[Kelas ' + escapeHtml(String(m.kelas)) + ' • Sem ' + escapeHtml(String(m.semester)) + ']</strong> ' + escapeHtml(teks) + '</span>' +
-            '</label>';
-          }).join('');
-        };
-
+    
         var syncBabKeContext = function() {
           var babDipilih = elBab.value;
           var cocok = semuaBabFase.find(function(b) { return b.bab === babDipilih; });
