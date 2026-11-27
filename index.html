@@ -5416,16 +5416,54 @@ jp: parseInt(((document.getElementById('f-an-jp') || document.querySelector('#mo
           window.syncCeklisKeGabungan();
         };
 
-        window.syncCeklisKeGabungan = function() {
+                window.syncCeklisKeGabungan = function() {
           var box = document.getElementById('box-checklist-materi-an');
           var inpGabung = document.getElementById('f-an-materi-gabung');
           if (!box || !inpGabung) return;
-          var dipilih = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]:checked'))
-            .map(function(cb) { return cb.value.trim(); })
-            .filter(Boolean);
+          var checkedEls = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]:checked'));
+          var dipilih = checkedEls.map(function(cb) { return cb.value.trim(); }).filter(Boolean);
           inpGabung.value = dipilih.join(', ');
+
+          var babDipilih = elBab.value;
+          var materiPertama = dipilih.length ? dipilih : '';
+          var itemBank = semuaBabFase.find(function(b) {
+            return b.bab === babDipilih && (!materiPertama || String(b.materi || '').trim() === materiPertama);
+          }) || semuaBabFase.find(function(b) { return b.bab === babDipilih; });
+
+          if (itemBank) {
+            if (itemBank.kelas) appState.context.kelas = String(itemBank.kelas);
+            if (itemBank.semester) appState.context.semester = String(itemBank.semester);
+          }
+
           if (typeof isiOtomatisCpDariBabMateri === 'function') isiOtomatisCpDariBabMateri();
           if (typeof updateGabunganMateriAnalisis === 'function') updateGabunganMateriAnalisis(true);
+
+          if (!ex) {
+            var elKode = document.getElementById('f-an-kodetp') || document.querySelector('#modal-body input[type="text"]');
+            var elElemen = document.getElementById('f-an-elemen');
+            if (elKode) {
+              var hurufFase = String(faseAktif || 'Fase C').replace(/fase\s*/i, '').trim().charAt(0).toUpperCase() || 'C';
+              var klsKode = String(appState.context.kelas || '5').trim();
+              var semKode = String(appState.context.semester || '1').trim();
+              var namaEl = elElemen ? String(elElemen.value || '').trim() : '';
+
+              var daftarElFase = [];
+              (appState.cpList || []).forEach(function(cp) {
+                var fCp = cp.fase ? String(cp.fase).trim() : (typeof kelasToFase === 'function' ? kelasToFase(cp.kelas) : faseAktif);
+                if (fCp.toLowerCase() === String(faseAktif).toLowerCase() && cp.mapel === appState.context.mapel && cp.elemen) {
+                  if (daftarElFase.indexOf(cp.elemen) === -1) daftarElFase.push(cp.elemen);
+                }
+              });
+              var idxEl = namaEl ? daftarElFase.indexOf(namaEl) : -1;
+              var noEl = idxEl > -1 ? (idxEl + 1) : 1;
+
+              var prefix = hurufFase + '.' + klsKode + '.' + semKode + '.' + noEl + '.';
+              var sudahAda = (appState.analisisList || []).filter(function(a) {
+                return a.mapel === appState.context.mapel && String(a.kodeTp || '').indexOf(prefix) === 0;
+              }).length;
+              elKode.value = prefix + (sudahAda + 1);
+            }
+          }
         };
     
         var syncBabKeContext = function() {
